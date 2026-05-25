@@ -6,6 +6,7 @@ import '../controllers/project_controller.dart';
 import '../models/parameter.dart';
 import '../models/fuzzy_object.dart';
 import '../widgets/parameter_list.dart';
+import '../widgets/parameter_tree.dart';
 import '../widgets/fuzzy_object_editor.dart';
 import 'comparison_overlay.dart';
 import 'settings_screen.dart';
@@ -145,6 +146,12 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                       case 'load_template':
                         _loadTemplate(context);
                         break;
+                      case 'convert_to_tree':
+                        controller.convertToTree();
+                        break;
+                      case 'convert_to_network':
+                        controller.convertToNetwork();
+                        break;
                     }
                   },
                   itemBuilder: (context) => [
@@ -190,6 +197,29 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                         ],
                       ),
                     ),
+                    const PopupMenuDivider(),
+                    if (!project.isTree)
+                      const PopupMenuItem(
+                        value: 'convert_to_tree',
+                        child: Row(
+                          children: [
+                            Icon(Icons.account_tree),
+                            SizedBox(width: 8),
+                            Text('Convert to Tree'),
+                          ],
+                        ),
+                      ),
+                    if (project.isTree)
+                      const PopupMenuItem(
+                        value: 'convert_to_network',
+                        child: Row(
+                          children: [
+                            Icon(Icons.hub),
+                            SizedBox(width: 8),
+                            Text('Convert to Network'),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -261,12 +291,16 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              const Icon(Icons.account_tree, size: 20, color: Colors.indigo),
+              Icon(
+                project.isTree ? Icons.account_tree : Icons.hub,
+                size: 20,
+                color: Colors.indigo,
+              ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Parameters',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  project.isTree ? 'Parameters (Tree)' : 'Parameters (Network)',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               IconButton(
@@ -279,14 +313,23 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
         ),
         const Divider(height: 1),
         Expanded(
-          child: ParameterList(
-            project: project,
-            onAddContributor: (target, contributor) => controller.addContributor(target, contributor),
-            onRemoveContributor: (target, id) => controller.removeContributor(target, id),
-            onUpdateWeight: (target, id, weight) => controller.updateContributorWeight(target, id, weight),
-            onRemove: (param) => _removeParameter(controller, param),
-            onEdit: (param) => controller.markChanged(),
-          ),
+          child: project.isTree
+              ? ParameterTree(
+                  project: project,
+                  onAddChild: (child) {
+                    controller.addParameter(child);
+                  },
+                  onRemove: (param) => _removeParameter(controller, param),
+                  onEdit: (param) => controller.markChanged(),
+                )
+              : ParameterList(
+                  project: project,
+                  onAddContributor: (target, contributor) => controller.addContributor(target, contributor),
+                  onRemoveContributor: (target, id) => controller.removeContributor(target, id),
+                  onUpdateWeight: (target, id, weight) => controller.updateContributorWeight(target, id, weight),
+                  onRemove: (param) => _removeParameter(controller, param),
+                  onEdit: (param) => controller.markChanged(),
+                ),
         ),
       ],
     );

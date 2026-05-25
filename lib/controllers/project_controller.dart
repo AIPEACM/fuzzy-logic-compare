@@ -14,9 +14,9 @@ class ProjectController extends ChangeNotifier {
   bool get hasUnsavedChanges => _hasUnsavedChanges;
   bool get hasProject => _project != null;
 
-  void createNewProject(String name) {
+  void createNewProject(String name, {bool isTree = false}) {
     final root = Parameter(name: name);
-    _project = Project(name: name, parameters: [root]);
+    _project = Project(name: name, isTree: isTree, parameters: [root]);
     _filePath = null;
     _hasUnsavedChanges = true;
     notifyListeners();
@@ -125,6 +125,90 @@ class ProjectController extends ChangeNotifier {
     if (_project == null) return;
     final link = target.contributors.firstWhere((c) => c.id == contributorId);
     link.weight = weight;
+    markChanged();
+  }
+
+  void convertToTree() {
+    if (_project == null) return;
+
+    // Multi-pass: keep duplicating until no parameter has multiple parents.
+    // Each pass clones parameters with >1 parent, then recompute.
+    while (true) {
+      final parentCount = <String, int>{};
+      for (final p in _project!.parameters) {
+        for (final c in p.contributors) {
+          parentCount[c.id] = (parentCount[c.id] ?? 0) + 1;
+        }
+      }
+
+      final multiParent = parentCount.entries.where((e) => e.value > 1).toList();
+      if (multiParent.isEmpty) break;
+
+      for (final entry in multiParent) {
+        final originalId = entry.key;
+        final original = _project!.getParameterById(originalId);
+        if (original == null) continue;
+
+        final parents = _project!.parameters
+            .where((p) => p.contributors.any((c) => c.id == originalId))
+            .toList();
+
+        for (var i = 1; i < parents.length; i++) {
+          final parent = parents[i];
+          // Deep clone: recursively copy the entire subtree rooted at original
+          final duplicate = _deepClone(original, parent.name);
+          _project!.parameters.addAll(duplicate.$2); // add all new params
+
+          // Replace original contributor link with duplicate root
+          parent.contributors = parent.contributors.map((c) {
+            if (c.id == originalId) {
+              return ContributorLink(id: duplicate.$1.id, weight: c.weight);
+            }
+            return c;
+          }).toList();
+        }
+      }
+    }
+
+    _project!.isTree = true;
+    markChanged();
+  }
+
+  /// Deep-clones a parameter and its entire subtree.
+  /// Returns (newRoot, allNewParameters).
+  (Parameter, List<Parameter>) _deepClone(Parameter root, String parentName) {
+    final newParams = <Parameter>[];
+    final idMap = <String, String>{}; // oldId -> newId
+
+    Parameter cloneOne(Parameter p) {
+      final dup = Parameter(
+        name: p == root ? '${parentName}_${p.name}' : p.name,
+        aggregation: p.aggregation,
+        maxValue: p.maxValue,
+      );
+      idMap[p.id] = dup.id;
+      newParams.add(dup);
+
+      // Recursively clone contributors
+      for (final link in p.contributors) {
+        final child = _project!.getParameterById(link.id);
+        if (child == null) continue;
+        final childDup = cloneOne(child);
+        dup.contributors.add(ContributorLink(
+          id: childDup.id,
+          weight: link.weight,
+        ));
+      }
+      return dup;
+    }
+
+    final newRoot = cloneOne(root);
+    return (newRoot, newParams);
+  }
+
+  void convertToNetwork() {
+    if (_project == null) return;
+    _project!.isTree = false;
     markChanged();
   }
 

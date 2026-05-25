@@ -11,7 +11,7 @@ class LauncherScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: 500),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -30,15 +30,24 @@ class LauncherScreen extends StatelessWidget {
               const SizedBox(height: 48),
               _ActionCard(
                 icon: Icons.add,
-                title: 'New Project',
-                subtitle: 'Create a new fuzzy logic comparison project',
-                onTap: () => _showNewProjectDialog(context),
+                title: 'New Tree Project',
+                subtitle: 'Hierarchical structure, single-parent only',
+                tooltip: 'Parameters are organized in a tree. Each parameter can only contribute to one parent. Classic fuzzy logic structure.',
+                onTap: () => _showNewProjectDialog(context, isTree: true),
+              ),
+              const SizedBox(height: 12),
+              _ActionCard(
+                icon: Icons.hub,
+                title: 'New Network Project',
+                subtitle: 'DAG structure, multi-parent allowed',
+                tooltip: 'Parameters can contribute to multiple other parameters (Directed Acyclic Graph). More flexible fuzzy logic structure.',
+                onTap: () => _showNewProjectDialog(context, isTree: false),
               ),
               const SizedBox(height: 16),
               _ActionCard(
                 icon: Icons.folder_open,
                 title: 'Open Project',
-                subtitle: 'Open an existing JSON project file',
+                subtitle: 'Open an existing JSON or JSONFZ file',
                 onTap: () => _openProject(context),
               ),
             ],
@@ -48,12 +57,12 @@ class LauncherScreen extends StatelessWidget {
     );
   }
 
-  void _showNewProjectDialog(BuildContext context) {
+  void _showNewProjectDialog(BuildContext context, {required bool isTree}) {
     final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('New Project'),
+        title: Text('New ${isTree ? "Tree" : "Network"} Project'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -61,7 +70,7 @@ class LauncherScreen extends StatelessWidget {
             labelText: 'Project Name',
             hintText: 'Enter project name',
           ),
-          onSubmitted: (_) => _createProject(context, controller.text),
+          onSubmitted: (_) => _createProject(context, controller.text, isTree: isTree),
         ),
         actions: [
           TextButton(
@@ -69,7 +78,7 @@ class LauncherScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => _createProject(context, controller.text),
+            onPressed: () => _createProject(context, controller.text, isTree: isTree),
             child: const Text('Create'),
           ),
         ],
@@ -77,11 +86,11 @@ class LauncherScreen extends StatelessWidget {
     );
   }
 
-  void _createProject(BuildContext context, String name) {
+  void _createProject(BuildContext context, String name, {required bool isTree}) {
     if (name.trim().isEmpty) return;
     Navigator.pop(context);
     final projController = context.read<ProjectController>();
-    projController.createNewProject(name.trim());
+    projController.createNewProject(name.trim(), isTree: isTree);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainEditorScreen()),
@@ -104,12 +113,14 @@ class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final String? tooltip;
   final VoidCallback onTap;
 
   const _ActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.tooltip,
     required this.onTap,
   });
 
@@ -129,11 +140,28 @@ class _ActionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
+                        ),
+                        if (tooltip != null)
+                          Tooltip(
+                            message: tooltip!,
+                            preferBelow: false,
+                            showDuration: const Duration(seconds: 5),
+                            child: const Icon(
+                              Icons.info_outline,
+                              size: 18,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(

@@ -3,11 +3,13 @@ import 'fuzzy_object.dart';
 
 class Project {
   String name;
+  bool isTree;
   List<Parameter> parameters;
   List<FuzzyObject> fuzzyObjects;
 
   Project({
     required this.name,
+    this.isTree = false,
     List<Parameter>? parameters,
     List<FuzzyObject>? fuzzyObjects,
   })  : parameters = parameters ?? [],
@@ -73,6 +75,7 @@ class Project {
 
   Map<String, dynamic> toJson() => {
         'name': name,
+        'isTree': isTree,
         'parameters': parameters.map((p) => p.toJson()).toList(),
         'fuzzyObjects': fuzzyObjects.map((o) => o.toJson()).toList(),
       };
@@ -100,6 +103,7 @@ class Project {
 
     return Project(
       name: json['name'] as String,
+      isTree: json['isTree'] as bool? ?? false,
       parameters: allParameters,
       fuzzyObjects: (json['fuzzyObjects'] as List<dynamic>?)
               ?.map((o) => FuzzyObject.fromJson(o as Map<String, dynamic>))
@@ -110,6 +114,7 @@ class Project {
 
   Project copy() => Project(
         name: name,
+        isTree: isTree,
         parameters: parameters.map((p) => p.copy()).toList(),
         fuzzyObjects: fuzzyObjects.map((o) => o.copy()).toList(),
       );
