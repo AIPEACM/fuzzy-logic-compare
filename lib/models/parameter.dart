@@ -8,7 +8,7 @@ class Parameter {
   double weight;
   AggregationType aggregation;
   double? maxValue;
-  List<Parameter> children;
+  List<String> contributorIds;
 
   Parameter({
     String? id,
@@ -16,11 +16,11 @@ class Parameter {
     this.weight = 1.0,
     this.aggregation = AggregationType.avg,
     this.maxValue,
-    List<Parameter>? children,
+    List<String>? contributorIds,
   })  : id = id ?? const Uuid().v4(),
-        children = children ?? [];
+        contributorIds = contributorIds ?? [];
 
-  bool get isLeaf => children.isEmpty;
+  bool get isLeaf => contributorIds.isEmpty;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -28,44 +28,40 @@ class Parameter {
         'weight': weight,
         'aggregation': aggregation.name,
         'maxValue': maxValue,
-        'children': children.map((c) => c.toJson()).toList(),
+        'contributorIds': contributorIds,
       };
 
-  factory Parameter.fromJson(Map<String, dynamic> json) => Parameter(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        weight: (json['weight'] as num).toDouble(),
-        aggregation: AggregationType.values.byName(json['aggregation'] as String),
-        maxValue: (json['maxValue'] as num?)?.toDouble(),
-        children: (json['children'] as List<dynamic>)
-            .map((c) => Parameter.fromJson(c as Map<String, dynamic>))
-            .toList(),
-      );
+  factory Parameter.fromJson(Map<String, dynamic> json) {
+    // Handle old format (children: List<Parameter>) and new format (contributorIds: List<String>)
+    List<String> contributorIds;
+    final contributorIdsJson = json['contributorIds'] as List<dynamic>?;
+    if (contributorIdsJson != null) {
+      contributorIds = contributorIdsJson.map((c) => c as String).toList();
+    } else {
+      final childrenJson = json['children'] as List<dynamic>?;
+      contributorIds = childrenJson
+          ?.map((c) => (c as Map<String, dynamic>)['id'] as String)
+          .toList() ?? [];
+    }
 
-  Parameter copy() {
     return Parameter(
-      id: id,
-      name: name,
-      weight: weight,
-      aggregation: aggregation,
-      maxValue: maxValue,
-      children: children.map((c) => c.copy()).toList(),
+      id: json['id'] as String,
+      name: json['name'] as String,
+      weight: (json['weight'] as num).toDouble(),
+      aggregation: AggregationType.values.byName(json['aggregation'] as String),
+      maxValue: (json['maxValue'] as num?)?.toDouble(),
+      contributorIds: contributorIds,
     );
   }
 
-  void collectLeafIds(List<String> ids) {
-    if (isLeaf) {
-      ids.add(id);
-    } else {
-      for (final child in children) {
-        child.collectLeafIds(ids);
-      }
-    }
-  }
+  Parameter copy() => Parameter(
+        id: id,
+        name: name,
+        weight: weight,
+        aggregation: aggregation,
+        maxValue: maxValue,
+        contributorIds: List.from(contributorIds),
+      );
 
-  List<String> get leafIds {
-    final ids = <String>[];
-    collectLeafIds(ids);
-    return ids;
-  }
+
 }

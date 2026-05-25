@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/parameter.dart';
+import '../models/project.dart';
 
 class ResultTree extends StatefulWidget {
-  final List<Parameter> parameters;
+  final Project project;
   final Map<String, double> results;
 
   const ResultTree({
     super.key,
-    required this.parameters,
+    required this.project,
     required this.results,
   });
 
@@ -20,27 +21,33 @@ class _ResultTreeState extends State<ResultTree> {
 
   @override
   Widget build(BuildContext context) {
+    final roots = widget.project.roots;
     return ListView.builder(
-      itemCount: widget.parameters.length,
+      itemCount: roots.length,
       itemBuilder: (context, index) {
-        return _buildNode(widget.parameters[index], 0);
+        return _buildNode(roots[index], 0);
       },
     );
   }
 
   Widget _buildNode(Parameter param, int depth) {
     final isExpanded = _expanded.contains(param.id);
-    final hasChildren = param.children.isNotEmpty;
+    final contributors = param.contributorIds
+        .map((id) => widget.project.getParameterById(id))
+        .where((p) => p != null)
+        .cast<Parameter>()
+        .toList();
+    final hasContributors = contributors.isNotEmpty;
     final score = widget.results[param.id] ?? 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: EdgeInsets.only(left: depth * 16.0 + 8, top: 4, bottom: 4),
+          padding: EdgeInsets.only(left: depth * 20.0 + 8, top: 4, bottom: 4),
           child: Row(
             children: [
-              if (hasChildren)
+              if (hasContributors)
                 IconButton(
                   iconSize: 18,
                   padding: EdgeInsets.zero,
@@ -89,7 +96,7 @@ class _ResultTreeState extends State<ResultTree> {
           ),
         ),
         if (isExpanded)
-          ...param.children.map((child) => _buildNode(child, depth + 1)),
+          ...contributors.map((c) => _buildNode(c, depth + 1)),
       ],
     );
   }

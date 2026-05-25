@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../models/parameter.dart';
+import '../models/project.dart';
 import '../models/fuzzy_object.dart';
 import '../widgets/result_tree.dart';
 
 class ComparisonOverlay extends StatelessWidget {
-  final List<Parameter> parameters;
+  final Project project;
   final List<FuzzyObject> objects;
   final Map<String, double> results;
 
   const ComparisonOverlay({
     super.key,
-    required this.parameters,
+    required this.project,
     required this.objects,
     required this.results,
   });
@@ -29,7 +29,7 @@ class ComparisonOverlay extends StatelessWidget {
             const Divider(height: 1),
             Expanded(
               child: ResultTree(
-                parameters: parameters,
+                project: project,
                 results: results,
               ),
             ),
@@ -91,12 +91,9 @@ class ComparisonOverlay extends StatelessWidget {
   }
 
   Widget _buildFooter(BuildContext context) {
-    final overall = results.isNotEmpty
-        ? results.entries
-            .where((e) => parameters.any((p) => p.id == e.key && p.isLeaf == false))
-            .map((e) => e.value)
-            .fold(0.0, (a, b) => a + b) /
-            parameters.where((p) => !p.isLeaf).length
+    final roots = project.roots;
+    final overall = roots.isNotEmpty && results.isNotEmpty
+        ? roots.map((r) => results[r.id] ?? 0.0).reduce((a, b) => a + b) / roots.length
         : 0.0;
 
     return Padding(

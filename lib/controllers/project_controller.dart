@@ -15,7 +15,8 @@ class ProjectController extends ChangeNotifier {
   bool get hasProject => _project != null;
 
   void createNewProject(String name) {
-    _project = Project(name: name);
+    final root = Parameter(name: name);
+    _project = Project(name: name, parameters: [root]);
     _filePath = null;
     _hasUnsavedChanges = true;
     notifyListeners();
@@ -61,45 +62,50 @@ class ProjectController extends ChangeNotifier {
   }
 
   void markChanged() {
-    if (!_hasUnsavedChanges) {
-      _hasUnsavedChanges = true;
-      notifyListeners();
-    }
+    _hasUnsavedChanges = true;
+    notifyListeners();
   }
 
   // Parameter operations
-  void addRootParameter(Parameter param) {
+  void addParameter(Parameter param) {
     if (_project == null) return;
     _project!.parameters = [..._project!.parameters, param];
     _hasUnsavedChanges = true;
     notifyListeners();
   }
 
-  void removeRootParameter(Parameter param) {
+  void removeParameter(Parameter param) {
     if (_project == null) return;
+    // Remove from all contributor lists first
+    for (final p in _project!.parameters) {
+      p.contributorIds = p.contributorIds.where((id) => id != param.id).toList();
+    }
     _project!.parameters = _project!.parameters.where((p) => p.id != param.id).toList();
     _hasUnsavedChanges = true;
     notifyListeners();
   }
 
-  void addParameter(Parameter parent, Parameter child) {
+  void addContributor(Parameter target, Parameter contributor) {
     if (_project == null) return;
-    parent.children = [...parent.children, child];
+    if (target.id == contributor.id) return;
+    if (target.contributorIds.contains(contributor.id)) return;
+    target.contributorIds = [...target.contributorIds, contributor.id];
     _hasUnsavedChanges = true;
     notifyListeners();
   }
 
-  void removeParameter(Parameter parent, Parameter child) {
+  void removeContributor(Parameter target, String contributorId) {
     if (_project == null) return;
-    parent.children = parent.children.where((c) => c.id != child.id).toList();
+    target.contributorIds = target.contributorIds.where((id) => id != contributorId).toList();
     _hasUnsavedChanges = true;
     notifyListeners();
   }
 
-  void updateParameter(Parameter param, {String? name, double? weight, AggregationType? aggregation}) {
+  void updateParameter(Parameter param, {String? name, double? weight, AggregationType? aggregation, double? maxValue}) {
     if (name != null) param.name = name;
     if (weight != null) param.weight = weight;
     if (aggregation != null) param.aggregation = aggregation;
+    if (maxValue != null) param.maxValue = maxValue;
     markChanged();
   }
 
@@ -126,22 +132,25 @@ class ProjectController extends ChangeNotifier {
     markChanged();
   }
 
-  void removeFuzzyValue(FuzzyObject obj, String parameterId) {
-    obj.values.remove(parameterId);
-    markChanged();
-  }
-
   // Comparison logic
   Map<String, double> compareObjects(List<FuzzyObject> objects) {
     if (_project == null || objects.isEmpty) return {};
     final result = <String, double>{};
     for (final param in _project!.parameters) {
-      _evaluateParameter(param, objects, result);
+      _evaluateParameter(param, objects, result, <String>{});
     }
     return result;
   }
 
-  double _evaluateParameter(Parameter param, List<FuzzyObject> objects, Map<String, double> result) {
+  double _evaluateParameter(Parameter param, List<FuzzyObject> objects, Map<String, double> result, Set<String> visiting) {
+    if (visiting.contains(param.id)) {
+      result[param.id] = 0.0;
+      return 0.0;
+    }
+    if (result.containsKey(param.id)) {
+      return result[param.id]!;
+    }
+
     if (param.isLeaf) {
       final values = objects.map((o) => o.values[param.id] ?? 0.0).toList();
       final score = _aggregate(values, param.aggregation, param.weight);
@@ -149,8 +158,16 @@ class ProjectController extends ChangeNotifier {
       return score;
     }
 
-    final childScores = param.children.map((c) => _evaluateParameter(c, objects, result)).toList();
-    final score = _aggregate(childScores, param.aggregation, param.weight);
+    visiting.add(param.id);
+    final contributorValues = param.contributorIds
+        .map((id) => _project!.getParameterById(id))
+        .where((p) => p != null)
+        .cast<Parameter>()
+        .map((p) => _evaluateParameter(p, objects, result, visiting))
+        .toList();
+    visiting.remove(param.id);
+
+    final score = _aggregate(contributorValues, param.aggregation, param.weight);
     result[param.id] = score;
     return score;
   }

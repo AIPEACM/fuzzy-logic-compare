@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import 'controllers/project_controller.dart';
 import 'screens/launcher_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(1200, 800),
+    center: true,
+    title: 'Fuzzy Logic Compare',
+  );
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ProjectController(),

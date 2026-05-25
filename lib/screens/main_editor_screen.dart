@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import '../controllers/project_controller.dart';
 import '../models/parameter.dart';
 import '../models/fuzzy_object.dart';
-import '../widgets/parameter_tree.dart';
+import '../widgets/parameter_list.dart';
 import '../widgets/fuzzy_object_editor.dart';
-
 import 'comparison_overlay.dart';
 import 'settings_screen.dart';
 
@@ -17,12 +17,59 @@ class MainEditorScreen extends StatefulWidget {
   State<MainEditorScreen> createState() => _MainEditorScreenState();
 }
 
-class _MainEditorScreenState extends State<MainEditorScreen> {
+class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener {
   int _selectedNavIndex = 0;
   FuzzyObject? _selectedObject;
   final Set<String> _selectedForCompare = {};
-  Parameter? _selectedParameter;
   double _splitRatio = 0.4;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    final controller = context.read<ProjectController>();
+    if (controller.hasUnsavedChanges) {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Unsaved Changes'),
+          content: const Text('You have unsaved changes. Do you want to save before closing?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Discard'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+      if (result == null) {
+        // Cancel - don't close
+        return;
+      }
+      if (result == true) {
+        await controller.saveProject();
+      }
+    }
+    await windowManager.destroy();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +163,6 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
                         ],
                       ),
                     ),
-
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -198,19 +244,18 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.add, color: Colors.green),
-                tooltip: 'Add Root Parameter',
-                onPressed: () => _showAddRootParameter(controller),
+                tooltip: 'Add Parameter',
+                onPressed: () => _showAddParameterDialog(controller),
               ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: ParameterTree(
-            parameters: project.parameters,
-            selectedParameter: _selectedParameter,
-            onSelect: (p) => setState(() => _selectedParameter = p),
-            onAddChild: (parent, child) => controller.addParameter(parent, child),
+          child: ParameterList(
+            project: project,
+            onAddContributor: (target, contributor) => controller.addContributor(target, contributor),
+            onRemoveContributor: (target, id) => controller.removeContributor(target, id),
             onRemove: (param) => _removeParameter(controller, param),
             onEdit: (param) => controller.markChanged(),
           ),
@@ -301,7 +346,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
                   child: _selectedObject == null
                       ? const Center(child: Text('Select an object to edit'))
                       : FuzzyObjectEditor(
-                          parameters: project.parameters,
+                          project: project,
                           fuzzyObject: _selectedObject!,
                           onChanged: (_) => controller.markChanged(),
                         ),
@@ -313,7 +358,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
     );
   }
 
-  void _showAddRootParameter(ProjectController controller) {
+  void _showAddParameterDialog(ProjectController controller) {
     final nameController = TextEditingController();
     double weight = 1.0;
     AggregationType aggregation = AggregationType.avg;
@@ -322,7 +367,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: const Text('Add Root Parameter'),
+          title: const Text('Add Parameter'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -371,7 +416,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
             FilledButton(
               onPressed: () {
                 if (nameController.text.trim().isNotEmpty) {
-                  controller.addRootParameter(
+                  controller.addParameter(
                     Parameter(
                       name: nameController.text.trim(),
                       weight: weight,
@@ -394,7 +439,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Parameter?'),
-        content: Text('Delete "${param.name}" and all its children?'),
+        content: Text('Delete "${param.name}"? It will be removed from all contributor lists.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -402,7 +447,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
           ),
           FilledButton(
             onPressed: () {
-              controller.removeRootParameter(param);
+              controller.removeParameter(param);
               Navigator.pop(ctx);
             },
             child: const Text('Delete'),
@@ -454,7 +499,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
     showDialog(
       context: context,
       builder: (ctx) => ComparisonOverlay(
-        parameters: controller.project!.parameters,
+        project: controller.project!,
         objects: objects,
         results: results,
       ),
@@ -488,14 +533,12 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
       setState(() {
         _selectedObject = null;
         _selectedForCompare.clear();
-        _selectedParameter = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Project opened')),
       );
     }
   }
-
 }
 
 class SaveIntent extends Intent {
