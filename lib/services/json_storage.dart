@@ -65,9 +65,10 @@ class JsonStorage {
     return dir.path;
   }
 
-  // Template operations (parameters only, no fuzzy objects)
-  static Future<String?> saveTemplate(List<dynamic> parametersJson) async {
+  // Template operations (parameters + isTree flag, no fuzzy objects)
+  static Future<String?> saveTemplate(List<dynamic> parametersJson, bool isTree) async {
     final jsonStr = const JsonEncoder.withIndent('  ').convert({
+      'isTree': isTree,
       'parameters': parametersJson,
     });
     final bytes = utf8.encode(jsonStr);
@@ -85,7 +86,7 @@ class JsonStorage {
     return file.path;
   }
 
-  static Future<List<dynamic>?> loadTemplate() async {
+  static Future<(List<dynamic>, bool?)?> loadTemplate() async {
     const typeGroup = XTypeGroup(
       label: 'Fuzzy Logic Template files',
       extensions: ['jfzt', 'json'],
@@ -96,6 +97,9 @@ class JsonStorage {
     final bytes = await file.readAsBytes();
     final jsonStr = utf8.decode(bytes);
     final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-    return json['parameters'] as List<dynamic>?;
+    final params = json['parameters'] as List<dynamic>?;
+    if (params == null) return null;
+    final isTree = json['isTree'] as bool?;
+    return (params, isTree);
   }
 }

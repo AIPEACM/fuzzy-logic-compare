@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -63,10 +64,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           _buildSectionHeader('License'),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SelectableText(
-              '''GNU GENERAL PUBLIC LICENSE
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SelectionArea(
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(fontSize: 12),
+                  children: [
+                    const TextSpan(
+                      text: '''GNU GENERAL PUBLIC LICENSE
 Version 3, 29 June 2007
 
 Copyright (C) 2026 AIPEACM
@@ -82,8 +88,22 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.''',
-              style: TextStyle(fontSize: 12),
+along with this program. If not, see ''',
+                    ),
+                    TextSpan(
+                      text: 'https://www.gnu.org/licenses/',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => _launchUrl('https://www.gnu.org/licenses/'),
+                    ),
+                    const TextSpan(text: '.'),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

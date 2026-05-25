@@ -67,15 +67,17 @@ class ProjectController extends ChangeNotifier {
   Future<String?> saveTemplate() async {
     if (_project == null) return null;
     final paramsJson = _project!.parameters.map((p) => p.toJson()).toList();
-    return await JsonStorage.saveTemplate(paramsJson);
+    return await JsonStorage.saveTemplate(paramsJson, _project!.isTree);
   }
 
   Future<bool> loadTemplate() async {
-    final paramsJson = await JsonStorage.loadTemplate();
-    if (paramsJson == null || _project == null) return false;
+    final result = await JsonStorage.loadTemplate();
+    if (result == null || _project == null) return false;
+    final (paramsJson, isTree) = result;
     for (final p in paramsJson) {
       _project!.parameters.add(Parameter.fromJson(p as Map<String, dynamic>));
     }
+    if (isTree != null) _project!.isTree = isTree;
     _hasUnsavedChanges = true;
     notifyListeners();
     return true;
@@ -171,6 +173,7 @@ class ProjectController extends ChangeNotifier {
     }
 
     _project!.isTree = true;
+    _filePath = null; // Force "Save As" on next Ctrl+S
     markChanged();
   }
 
@@ -209,6 +212,7 @@ class ProjectController extends ChangeNotifier {
   void convertToNetwork() {
     if (_project == null) return;
     _project!.isTree = false;
+    _filePath = null; // Force "Save As" on next Ctrl+S
     markChanged();
   }
 
