@@ -23,6 +23,34 @@ class Project {
     }
   }
 
+  Parameter? getParentOf(String id) {
+    for (final p in parameters) {
+      if (p.contributorIds.contains(id)) return p;
+    }
+    return null;
+  }
+
+  double getContributorWeight(String childId) {
+    final parent = getParentOf(childId);
+    if (parent == null) return 1.0;
+    final link = parent.contributors.firstWhere(
+      (c) => c.id == childId,
+      orElse: () => ContributorLink(id: childId),
+    );
+    return link.weight;
+  }
+
+  void setContributorWeight(String childId, double weight) {
+    final parent = getParentOf(childId);
+    if (parent == null) return;
+    for (final link in parent.contributors) {
+      if (link.id == childId) {
+        link.weight = weight;
+        return;
+      }
+    }
+  }
+
   List<Parameter> get roots => parameters
       .where((p) => !parameters.any((other) => other.contributorIds.contains(p.id)))
       .toList();

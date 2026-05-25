@@ -320,7 +320,10 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                     controller.addParameter(child);
                   },
                   onRemove: (param) => _removeParameter(controller, param),
-                  onEdit: (param) => controller.markChanged(),
+                  onEdit: (param, weight) {
+                    project.setContributorWeight(param.id, weight);
+                    controller.markChanged();
+                  },
                 )
               : ParameterList(
                   project: project,

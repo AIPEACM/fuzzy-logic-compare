@@ -6,7 +6,7 @@ class ParameterTree extends StatefulWidget {
   final Project project;
   final ValueChanged<Parameter> onAddChild;
   final ValueChanged<Parameter> onRemove;
-  final ValueChanged<Parameter> onEdit;
+  final void Function(Parameter param, double weight) onEdit;
 
   const ParameterTree({
     super.key,
@@ -42,6 +42,8 @@ class _ParameterTreeState extends State<ParameterTree> {
         .cast<Parameter>()
         .toList();
     final hasChildren = children.isNotEmpty;
+    final isRoot = widget.project.roots.any((r) => r.id == param.id);
+    final weight = isRoot ? null : widget.project.getContributorWeight(param.id);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,13 +78,19 @@ class _ParameterTreeState extends State<ParameterTree> {
                         style: const TextStyle(fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (!widget.project.roots.any((r) => r.id == param.id))
-                        Text(
-                          param.maxValue != null
-                              ? 'max=${param.maxValue} • ${param.aggregation.name}'
-                              : param.aggregation.name,
-                          style: Theme.of(context).textTheme.bodySmall,
+                      if (!isRoot) ...[
+                        Builder(
+                          builder: (context) {
+                            final parent = widget.project.getParentOf(param.id);
+                            final totalWeight = parent?.contributors.fold(0.0, (s, c) => s + c.weight) ?? 1.0;
+                            final normalized = totalWeight > 0 ? (weight ?? 1.0) / totalWeight : 0.0;
+                            return Text(
+                              'w=${(weight ?? 1.0).toStringAsFixed(2)} (n=${normalized.toStringAsFixed(2)}) • ${param.aggregation.name}${param.maxValue != null ? ' • max=${param.maxValue}' : ''}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            );
+                          },
                         ),
+                      ],
                     ],
                   ),
                 ),
@@ -197,6 +205,9 @@ class _ParameterTreeState extends State<ParameterTree> {
     final maxValueController = TextEditingController(
       text: param.maxValue?.toString() ?? '',
     );
+    final isRoot = widget.project.roots.any((r) => r.id == param.id);
+    final weight = isRoot ? 1.0 : widget.project.getContributorWeight(param.id);
+    double editedWeight = weight;
     AggregationType aggregation = param.aggregation;
 
     showDialog(
@@ -213,6 +224,24 @@ class _ParameterTreeState extends State<ParameterTree> {
                   decoration: const InputDecoration(labelText: 'Name'),
                 ),
                 const SizedBox(height: 12),
+                if (!isRoot) ...[
+                  Row(
+                    children: [
+                      const Text('Weight:'),
+                      Expanded(
+                        child: Slider(
+                          value: editedWeight,
+                          min: 0,
+                          max: 2,
+                          divisions: 40,
+                          label: editedWeight.toStringAsFixed(2),
+                          onChanged: (v) => setState(() => editedWeight = v),
+                        ),
+                      ),
+                      Text(editedWeight.toStringAsFixed(2)),
+                    ],
+                  ),
+                ],
                 DropdownButtonFormField<AggregationType>(
                   initialValue: aggregation,
                   decoration: const InputDecoration(labelText: 'Aggregation'),
@@ -249,7 +278,7 @@ class _ParameterTreeState extends State<ParameterTree> {
                     ? null
                     : double.tryParse(maxValueController.text.trim());
                 setState(() {});
-                widget.onEdit(param);
+                widget.onEdit(param, editedWeight);
                 Navigator.pop(ctx);
               },
               child: const Text('Save'),
