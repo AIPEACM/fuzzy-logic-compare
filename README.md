@@ -8,7 +8,6 @@ A Flutter desktop application for defining hierarchical fuzzy logic parameters, 
 - **Fuzzy Objects** — Create multiple objects and assign values to each leaf parameter
 - **Visual Comparison** — Select 2+ objects and compare them; results displayed in a color-coded tree overlay
 - **JSON Persistence** — Save and load projects as JSON files
-- **Version Control** — Save new versions with auto-incremented version numbers
 - **Cross-Platform** — Supports Linux desktop, Android, and web
 
 ## Screenshots
@@ -45,14 +44,12 @@ A Flutter desktop application for defining hierarchical fuzzy logic parameters, 
 5. **Save Your Work**
    - **Ctrl+S** — Save (overwrite current file)
    - **Save As...** — Save to a new file
-   - **Save New Version** — Auto-increment version number and save
 
 ## JSON File Format
 
 ```json
 {
   "name": "My Project",
-  "version": 1,
   "parameters": [
     {
       "id": "...",

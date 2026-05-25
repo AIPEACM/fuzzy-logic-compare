@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/project.dart';
-import '../models/project_version.dart';
 import '../models/parameter.dart';
 import '../models/fuzzy_object.dart';
 import '../services/json_storage.dart';
@@ -26,7 +25,7 @@ class ProjectController extends ChangeNotifier {
     final proj = await JsonStorage.openProject();
     if (proj == null) return false;
     _project = proj;
-    _filePath = null; // user picked it, but we don't track path from openFile
+    _filePath = null;
     _hasUnsavedChanges = false;
     notifyListeners();
     return true;
@@ -45,18 +44,6 @@ class ProjectController extends ChangeNotifier {
     if (path != null) {
       _filePath = path;
       _hasUnsavedChanges = false;
-      // Update or add current version entry
-      final existingIndex = _project!.versionHistory.indexWhere((v) => v.version == _project!.version);
-      final entry = ProjectVersion(
-        version: _project!.version,
-        filePath: path,
-        savedAt: DateTime.now(),
-      );
-      if (existingIndex >= 0) {
-        _project!.versionHistory[existingIndex] = entry;
-      } else {
-        _project!.versionHistory.add(entry);
-      }
       notifyListeners();
     }
     return path;
@@ -66,40 +53,6 @@ class ProjectController extends ChangeNotifier {
     if (_project == null) return null;
     final path = await JsonStorage.saveProject(_project!);
     if (path != null) {
-      _filePath = path;
-      _hasUnsavedChanges = false;
-      // Add as new version entry
-      _project!.versionHistory.add(ProjectVersion(
-        version: _project!.version,
-        filePath: path,
-        savedAt: DateTime.now(),
-      ));
-      notifyListeners();
-    }
-    return path;
-  }
-
-  Future<String?> saveNewVersion() async {
-    if (_project == null) return null;
-    final newVersion = _project!.version + 1;
-    final tempProject = _project!.copy();
-    tempProject.version = newVersion;
-    final path = await JsonStorage.saveProject(tempProject);
-    if (path != null) {
-      // Save the current version file before switching to new version
-      if (_filePath != null) {
-        _project!.versionHistory.add(ProjectVersion(
-          version: _project!.version,
-          filePath: _filePath!,
-          savedAt: DateTime.now(),
-        ));
-      }
-      _project!.version = newVersion;
-      _project!.versionHistory.add(ProjectVersion(
-        version: newVersion,
-        filePath: path,
-        savedAt: DateTime.now(),
-      ));
       _filePath = path;
       _hasUnsavedChanges = false;
       notifyListeners();

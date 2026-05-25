@@ -6,7 +6,7 @@ import '../models/parameter.dart';
 import '../models/fuzzy_object.dart';
 import '../widgets/parameter_tree.dart';
 import '../widgets/fuzzy_object_editor.dart';
-import '../services/json_storage.dart';
+
 import 'comparison_overlay.dart';
 import 'settings_screen.dart';
 
@@ -59,7 +59,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      '${project.name} (v${project.version})',
+                      project.name,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -89,14 +89,8 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
                       case 'save_as':
                         _saveAs(context);
                         break;
-                      case 'save_version':
-                        _saveNewVersion(context);
-                        break;
                       case 'open':
                         _openAnotherProject(context);
-                        break;
-                      case 'versions':
-                        _showVersionHistory(context);
                         break;
                     }
                   },
@@ -122,27 +116,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
-                      value: 'save_version',
-                      child: Row(
-                        children: [
-                          Icon(Icons.layers),
-                          SizedBox(width: 8),
-                          Text('Save New Version'),
-                        ],
-                      ),
-                    ),
-                    if (controller.project!.versionHistory.isNotEmpty)
-                      const PopupMenuItem(
-                        value: 'versions',
-                        child: Row(
-                          children: [
-                            Icon(Icons.history),
-                            SizedBox(width: 8),
-                            Text('Version History'),
-                          ],
-                        ),
-                      ),
+
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -507,16 +481,6 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
     }
   }
 
-  Future<void> _saveNewVersion(BuildContext context) async {
-    final controller = context.read<ProjectController>();
-    final path = await controller.saveNewVersion();
-    if (path != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved new version to $path')),
-      );
-    }
-  }
-
   Future<void> _openAnotherProject(BuildContext context) async {
     final controller = context.read<ProjectController>();
     final success = await controller.openProject();
@@ -532,71 +496,6 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
     }
   }
 
-  void _showVersionHistory(BuildContext context) {
-    final controller = context.read<ProjectController>();
-    final history = controller.project!.versionHistory;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Version History'),
-        content: SizedBox(
-          width: 500,
-          height: 400,
-          child: ListView.builder(
-            itemCount: history.length,
-            itemBuilder: (context, index) {
-              final version = history[index];
-              final isCurrent = version.version == controller.project!.version &&
-                  version.filePath == controller.filePath;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isCurrent ? Colors.indigo : Colors.grey,
-                  child: Text(
-                    '${version.version}',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-                title: Text('Version ${version.version}${isCurrent ? ' (current)' : ''}'),
-                subtitle: Text(
-                  '${version.savedAt.toLocal().toString().split('.').first}\n${version.filePath}',
-                  style: const TextStyle(fontSize: 11),
-                ),
-                isThreeLine: true,
-                trailing: isCurrent
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : IconButton(
-                        icon: const Icon(Icons.folder_open, size: 20),
-                        tooltip: 'Open this version',
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          final proj = await JsonStorage.openProjectAtPath(version.filePath);
-                          if (proj != null && context.mounted) {
-                            controller.loadProject(proj, version.filePath);
-                            setState(() {
-                              _selectedObject = null;
-                              _selectedForCompare.clear();
-                              _selectedParameter = null;
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Loaded version ${version.version}')),
-                            );
-                          }
-                        },
-                      ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class SaveIntent extends Intent {

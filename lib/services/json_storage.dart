@@ -44,7 +44,7 @@ class JsonStorage {
       return path;
     }
 
-    final suggested = '${project.name}_v${project.version}.$_extension';
+    final suggested = '${project.name}.$_extension';
     final location = await getSaveLocation(
       suggestedName: suggested,
       acceptedTypeGroups: const [
