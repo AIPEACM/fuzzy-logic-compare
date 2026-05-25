@@ -4,8 +4,8 @@ import 'fuzzy_object.dart';
 class Project {
   String name;
   int version;
-  final List<Parameter> parameters;
-  final List<FuzzyObject> fuzzyObjects;
+  List<Parameter> parameters;
+  List<FuzzyObject> fuzzyObjects;
 
   Project({
     required this.name,

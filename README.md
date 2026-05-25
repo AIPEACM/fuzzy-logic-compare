@@ -140,4 +140,4 @@ lib/
 
 ## License
 
-MIT
+This project is licensed under the GPLv3 License. See [LICENSE](LICENSE) for details.

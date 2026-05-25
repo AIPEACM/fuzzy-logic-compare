@@ -368,14 +368,13 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
             FilledButton(
               onPressed: () {
                 if (nameController.text.trim().isNotEmpty) {
-                  controller.project!.parameters.add(
+                  controller.addRootParameter(
                     Parameter(
                       name: nameController.text.trim(),
                       weight: weight,
                       aggregation: aggregation,
                     ),
                   );
-                  controller.markChanged();
                   Navigator.pop(ctx);
                 }
               },
@@ -400,8 +399,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
           ),
           FilledButton(
             onPressed: () {
-              controller.project!.parameters.remove(param);
-              controller.markChanged();
+              controller.removeRootParameter(param);
               Navigator.pop(ctx);
             },
             child: const Text('Delete'),

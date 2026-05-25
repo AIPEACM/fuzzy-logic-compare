@@ -7,7 +7,7 @@ class Parameter {
   String name;
   double weight;
   AggregationType aggregation;
-  final List<Parameter> children;
+  List<Parameter> children;
 
   Parameter({
     String? id,

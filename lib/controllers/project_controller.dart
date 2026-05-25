@@ -75,16 +75,32 @@ class ProjectController extends ChangeNotifier {
   }
 
   // Parameter operations
+  void addRootParameter(Parameter param) {
+    if (_project == null) return;
+    _project!.parameters = [..._project!.parameters, param];
+    _hasUnsavedChanges = true;
+    notifyListeners();
+  }
+
+  void removeRootParameter(Parameter param) {
+    if (_project == null) return;
+    _project!.parameters = _project!.parameters.where((p) => p.id != param.id).toList();
+    _hasUnsavedChanges = true;
+    notifyListeners();
+  }
+
   void addParameter(Parameter parent, Parameter child) {
     if (_project == null) return;
-    parent.children.add(child);
-    markChanged();
+    parent.children = [...parent.children, child];
+    _hasUnsavedChanges = true;
+    notifyListeners();
   }
 
   void removeParameter(Parameter parent, Parameter child) {
     if (_project == null) return;
-    parent.children.remove(child);
-    markChanged();
+    parent.children = parent.children.where((c) => c.id != child.id).toList();
+    _hasUnsavedChanges = true;
+    notifyListeners();
   }
 
   void updateParameter(Parameter param, {String? name, double? weight, AggregationType? aggregation}) {
