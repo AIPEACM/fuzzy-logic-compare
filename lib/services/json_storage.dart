@@ -66,4 +66,38 @@ class JsonStorage {
     final dir = await getApplicationDocumentsDirectory();
     return dir.path;
   }
+
+  // Template operations (parameters only, no fuzzy objects)
+  static Future<String?> saveTemplate(List<dynamic> parametersJson) async {
+    final jsonStr = const JsonEncoder.withIndent('  ').convert({
+      'parameters': parametersJson,
+    });
+    final bytes = utf8.encode(jsonStr);
+
+    final location = await getSaveLocation(
+      suggestedName: 'template.json',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'JSON files', extensions: [_extension]),
+      ],
+    );
+    if (location == null) return null;
+
+    final file = File(location.path);
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+
+  static Future<List<dynamic>?> loadTemplate() async {
+    const typeGroup = XTypeGroup(
+      label: 'JSON files',
+      extensions: [_extension],
+    );
+    final file = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (file == null) return null;
+
+    final bytes = await file.readAsBytes();
+    final jsonStr = utf8.decode(bytes);
+    final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+    return json['parameters'] as List<dynamic>?;
+  }
 }

@@ -61,6 +61,23 @@ class ProjectController extends ChangeNotifier {
     return path;
   }
 
+  Future<String?> saveTemplate() async {
+    if (_project == null) return null;
+    final paramsJson = _project!.parameters.map((p) => p.toJson()).toList();
+    return await JsonStorage.saveTemplate(paramsJson);
+  }
+
+  Future<bool> loadTemplate() async {
+    final paramsJson = await JsonStorage.loadTemplate();
+    if (paramsJson == null || _project == null) return false;
+    for (final p in paramsJson) {
+      _project!.parameters.add(Parameter.fromJson(p as Map<String, dynamic>));
+    }
+    _hasUnsavedChanges = true;
+    notifyListeners();
+    return true;
+  }
+
   void markChanged() {
     _hasUnsavedChanges = true;
     notifyListeners();
@@ -166,11 +183,13 @@ class ProjectController extends ChangeNotifier {
 
     visiting.add(param.id);
     final contributorValues = <double>[];
+    final totalWeight = param.contributors.fold(0.0, (sum, c) => sum + c.weight);
     for (final link in param.contributors) {
       final contributor = _project!.getParameterById(link.id);
       if (contributor == null) continue;
       final value = _evaluateParameter(contributor, objects, result, visiting);
-      contributorValues.add(value * link.weight);
+      final normalizedWeight = totalWeight > 0 ? link.weight / totalWeight : 0;
+      contributorValues.add(value * normalizedWeight);
     }
     visiting.remove(param.id);
 

@@ -139,6 +139,12 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                       case 'open':
                         _openAnotherProject(context);
                         break;
+                      case 'save_template':
+                        _saveTemplate(context);
+                        break;
+                      case 'load_template':
+                        _loadTemplate(context);
+                        break;
                     }
                   },
                   itemBuilder: (context) => [
@@ -160,6 +166,27 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                           Icon(Icons.save_as),
                           SizedBox(width: 8),
                           Text('Save As...'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'save_template',
+                      child: Row(
+                        children: [
+                          Icon(Icons.file_copy_outlined),
+                          SizedBox(width: 8),
+                          Text('Save Template'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'load_template',
+                      child: Row(
+                        children: [
+                          Icon(Icons.download_outlined),
+                          SizedBox(width: 8),
+                          Text('Load Template'),
                         ],
                       ),
                     ),
@@ -519,6 +546,26 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Project opened')),
+      );
+    }
+  }
+
+  Future<void> _saveTemplate(BuildContext context) async {
+    final controller = context.read<ProjectController>();
+    final path = await controller.saveTemplate();
+    if (path != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Template saved to $path')),
+      );
+    }
+  }
+
+  Future<void> _loadTemplate(BuildContext context) async {
+    final controller = context.read<ProjectController>();
+    final success = await controller.loadTemplate();
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Template loaded')),
       );
     }
   }

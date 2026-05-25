@@ -108,29 +108,41 @@ class _ParameterListState extends State<ParameterList> {
                     dense: true,
                     leading: const Icon(Icons.arrow_upward, size: 16),
                     title: Text(contributor?.name ?? 'Unknown'),
-                    subtitle: Row(
-                      children: [
-                        const Text('Weight:'),
-                        Expanded(
-                          child: Slider(
-                            value: link.weight,
-                            min: 0,
-                            max: 1,
-                            divisions: 20,
-                            label: link.weight.toStringAsFixed(2),
-                            onChanged: (v) {
-                              widget.onUpdateWeight(param, link.id, v);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 40,
-                          child: Text(
-                            link.weight.toStringAsFixed(2),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
+                    subtitle: Builder(
+                      builder: (context) {
+                        final totalWeight = param.contributors.fold(0.0, (s, c) => s + c.weight);
+                        final normalized = totalWeight > 0 ? link.weight / totalWeight : 0;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text('w=', style: TextStyle(fontSize: 12)),
+                                Expanded(
+                                  child: Slider(
+                                    value: link.weight,
+                                    min: 0,
+                                    max: 2,
+                                    divisions: 40,
+                                    label: link.weight.toStringAsFixed(2),
+                                    onChanged: (v) {
+                                      widget.onUpdateWeight(param, link.id, v);
+                                    },
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    '${link.weight.toStringAsFixed(2)} (n=${normalized.toStringAsFixed(2)})',
+                                    style: const TextStyle(fontSize: 11),
+                                    textAlign: TextAlign.end,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
                     ),
                     trailing: IconButton(
                       icon: const Icon(Icons.remove_circle, size: 18, color: Colors.red),
