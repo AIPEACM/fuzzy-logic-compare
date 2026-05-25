@@ -55,11 +55,12 @@ class ProjectController extends ChangeNotifier {
 
   Future<String?> saveNewVersion() async {
     if (_project == null) return null;
-    _project!.version += 1;
-    _hasUnsavedChanges = true;
-    notifyListeners();
-    final path = await JsonStorage.saveProject(_project!);
+    final newVersion = _project!.version + 1;
+    final tempProject = _project!.copy();
+    tempProject.version = newVersion;
+    final path = await JsonStorage.saveProject(tempProject);
     if (path != null) {
+      _project!.version = newVersion;
       _filePath = path;
       _hasUnsavedChanges = false;
       notifyListeners();

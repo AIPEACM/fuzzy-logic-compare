@@ -207,7 +207,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
             parameters: project.parameters,
             selectedParameter: _selectedParameter,
             onSelect: (p) => setState(() => _selectedParameter = p),
-            onAddChild: (parent) {},
+            onAddChild: (parent, child) => controller.addParameter(parent, child),
             onRemove: (param) => _removeParameter(controller, param),
             onEdit: (param) => controller.markChanged(),
           ),

@@ -3,7 +3,7 @@ import '../models/parameter.dart';
 
 class ParameterTree extends StatefulWidget {
   final List<Parameter> parameters;
-  final ValueChanged<Parameter> onAddChild;
+  final void Function(Parameter parent, Parameter child) onAddChild;
   final ValueChanged<Parameter> onRemove;
   final ValueChanged<Parameter> onEdit;
   final Parameter? selectedParameter;
@@ -179,13 +179,13 @@ class _ParameterTreeState extends State<ParameterTree> {
             FilledButton(
               onPressed: () {
                 if (nameController.text.trim().isNotEmpty) {
+                  setState(() => _expanded.add(parent.id));
                   final child = Parameter(
                     name: nameController.text.trim(),
                     weight: weight,
                     aggregation: aggregation,
                   );
-                  widget.onAddChild(parent);
-                  parent.children.add(child);
+                  widget.onAddChild(parent, child);
                   Navigator.pop(ctx);
                 }
               },
@@ -256,6 +256,7 @@ class _ParameterTreeState extends State<ParameterTree> {
                 param.name = nameController.text.trim();
                 param.weight = weight;
                 param.aggregation = aggregation;
+                setState(() {});
                 widget.onEdit(param);
                 Navigator.pop(ctx);
               },
