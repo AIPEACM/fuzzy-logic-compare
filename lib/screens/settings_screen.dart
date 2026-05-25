@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -45,6 +46,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Version'),
             subtitle: Text(_version.isEmpty ? 'Loading...' : _version),
           ),
+          ListTile(
+            leading: const Icon(Icons.code),
+            title: const Text('GitHub Repository'),
+            subtitle: const Text('github.com/AIPEACM/fuzzy-logic-compare'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => _launchUrl('https://github.com/AIPEACM/fuzzy-logic-compare'),
+          ),
           const Divider(),
           _buildSectionHeader('Help'),
           ListTile(
@@ -52,6 +60,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('How to Use'),
             subtitle: const Text('Define parameters, add fuzzy objects, compare'),
             onTap: () => _showHelpDialog(context),
+          ),
+          const Divider(),
+          _buildSectionHeader('License'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SelectableText(
+              '''GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2026 AIPEACM
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.''',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -69,6 +102,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
       ),
     );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _showHelpDialog(BuildContext context) {
