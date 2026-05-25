@@ -2,66 +2,82 @@ import 'package:uuid/uuid.dart';
 
 enum AggregationType { min, max, avg, weighted }
 
+class ContributorLink {
+  final String id;
+  double weight;
+
+  ContributorLink({required this.id, this.weight = 1.0});
+
+  Map<String, dynamic> toJson() => {'id': id, 'weight': weight};
+
+  factory ContributorLink.fromJson(Map<String, dynamic> json) => ContributorLink(
+        id: json['id'] as String,
+        weight: (json['weight'] as num?)?.toDouble() ?? 1.0,
+      );
+
+  ContributorLink copy() => ContributorLink(id: id, weight: weight);
+}
+
 class Parameter {
   final String id;
   String name;
-  double weight;
   AggregationType aggregation;
   double? maxValue;
-  List<String> contributorIds;
+  List<ContributorLink> contributors;
 
   Parameter({
     String? id,
     required this.name,
-    this.weight = 1.0,
     this.aggregation = AggregationType.avg,
     this.maxValue,
-    List<String>? contributorIds,
+    List<ContributorLink>? contributors,
   })  : id = id ?? const Uuid().v4(),
-        contributorIds = contributorIds ?? [];
+        contributors = contributors ?? [];
 
-  bool get isLeaf => contributorIds.isEmpty;
+  bool get isLeaf => contributors.isEmpty;
+
+  List<String> get contributorIds => contributors.map((c) => c.id).toList();
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'weight': weight,
         'aggregation': aggregation.name,
         'maxValue': maxValue,
-        'contributorIds': contributorIds,
+        'contributors': contributors.map((c) => c.toJson()).toList(),
       };
 
   factory Parameter.fromJson(Map<String, dynamic> json) {
-    // Handle old format (children: List<Parameter>) and new format (contributorIds: List<String>)
-    List<String> contributorIds;
-    final contributorIdsJson = json['contributorIds'] as List<dynamic>?;
-    if (contributorIdsJson != null) {
-      contributorIds = contributorIdsJson.map((c) => c as String).toList();
+    List<ContributorLink> contributors;
+    final contributorsJson = json['contributors'] as List<dynamic>?;
+    if (contributorsJson != null) {
+      contributors = contributorsJson
+          .map((c) => ContributorLink.fromJson(c as Map<String, dynamic>))
+          .toList();
     } else {
-      final childrenJson = json['children'] as List<dynamic>?;
-      contributorIds = childrenJson
-          ?.map((c) => (c as Map<String, dynamic>)['id'] as String)
+      final contributorIdsJson = json['contributorIds'] as List<dynamic>?
+          ?? json['children'] as List<dynamic>?;
+      contributors = contributorIdsJson
+          ?.map((item) {
+            if (item is String) return ContributorLink(id: item);
+            return ContributorLink(id: (item as Map<String, dynamic>)['id'] as String);
+          })
           .toList() ?? [];
     }
 
     return Parameter(
       id: json['id'] as String,
       name: json['name'] as String,
-      weight: (json['weight'] as num).toDouble(),
       aggregation: AggregationType.values.byName(json['aggregation'] as String),
       maxValue: (json['maxValue'] as num?)?.toDouble(),
-      contributorIds: contributorIds,
+      contributors: contributors,
     );
   }
 
   Parameter copy() => Parameter(
         id: id,
         name: name,
-        weight: weight,
         aggregation: aggregation,
         maxValue: maxValue,
-        contributorIds: List.from(contributorIds),
+        contributors: contributors.map((c) => c.copy()).toList(),
       );
-
-
 }

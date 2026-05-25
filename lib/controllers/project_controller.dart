@@ -78,7 +78,7 @@ class ProjectController extends ChangeNotifier {
     if (_project == null) return;
     // Remove from all contributor lists first
     for (final p in _project!.parameters) {
-      p.contributorIds = p.contributorIds.where((id) => id != param.id).toList();
+      p.contributors = p.contributors.where((c) => c.id != param.id).toList();
     }
     _project!.parameters = _project!.parameters.where((p) => p.id != param.id).toList();
     _hasUnsavedChanges = true;
@@ -89,21 +89,27 @@ class ProjectController extends ChangeNotifier {
     if (_project == null) return;
     if (target.id == contributor.id) return;
     if (target.contributorIds.contains(contributor.id)) return;
-    target.contributorIds = [...target.contributorIds, contributor.id];
+    target.contributors = [...target.contributors, ContributorLink(id: contributor.id)];
     _hasUnsavedChanges = true;
     notifyListeners();
   }
 
   void removeContributor(Parameter target, String contributorId) {
     if (_project == null) return;
-    target.contributorIds = target.contributorIds.where((id) => id != contributorId).toList();
+    target.contributors = target.contributors.where((c) => c.id != contributorId).toList();
     _hasUnsavedChanges = true;
     notifyListeners();
   }
 
-  void updateParameter(Parameter param, {String? name, double? weight, AggregationType? aggregation, double? maxValue}) {
+  void updateContributorWeight(Parameter target, String contributorId, double weight) {
+    if (_project == null) return;
+    final link = target.contributors.firstWhere((c) => c.id == contributorId);
+    link.weight = weight;
+    markChanged();
+  }
+
+  void updateParameter(Parameter param, {String? name, AggregationType? aggregation, double? maxValue}) {
     if (name != null) param.name = name;
-    if (weight != null) param.weight = weight;
     if (aggregation != null) param.aggregation = aggregation;
     if (maxValue != null) param.maxValue = maxValue;
     markChanged();
@@ -153,42 +159,36 @@ class ProjectController extends ChangeNotifier {
 
     if (param.isLeaf) {
       final values = objects.map((o) => o.values[param.id] ?? 0.0).toList();
-      final score = _aggregate(values, param.aggregation, param.weight);
+      final score = values.reduce((a, b) => a + b) / values.length;
       result[param.id] = score;
       return score;
     }
 
     visiting.add(param.id);
-    final contributorValues = param.contributorIds
-        .map((id) => _project!.getParameterById(id))
-        .where((p) => p != null)
-        .cast<Parameter>()
-        .map((p) => _evaluateParameter(p, objects, result, visiting))
-        .toList();
+    final contributorValues = <double>[];
+    for (final link in param.contributors) {
+      final contributor = _project!.getParameterById(link.id);
+      if (contributor == null) continue;
+      final value = _evaluateParameter(contributor, objects, result, visiting);
+      contributorValues.add(value * link.weight);
+    }
     visiting.remove(param.id);
 
-    final score = _aggregate(contributorValues, param.aggregation, param.weight);
+    final score = _aggregate(contributorValues, param.aggregation);
     result[param.id] = score;
     return score;
   }
 
-  double _aggregate(List<double> values, AggregationType type, double weight) {
+  double _aggregate(List<double> values, AggregationType type) {
     if (values.isEmpty) return 0.0;
-    double raw;
     switch (type) {
       case AggregationType.min:
-        raw = values.reduce((a, b) => a < b ? a : b);
-        break;
+        return values.reduce((a, b) => a < b ? a : b);
       case AggregationType.max:
-        raw = values.reduce((a, b) => a > b ? a : b);
-        break;
+        return values.reduce((a, b) => a > b ? a : b);
       case AggregationType.avg:
-        raw = values.reduce((a, b) => a + b) / values.length;
-        break;
       case AggregationType.weighted:
-        raw = values.reduce((a, b) => a + b) / values.length;
-        break;
+        return values.reduce((a, b) => a + b) / values.length;
     }
-    return (raw * weight).clamp(0.0, 1.0);
   }
 }

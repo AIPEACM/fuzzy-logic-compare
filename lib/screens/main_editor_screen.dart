@@ -256,6 +256,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
             project: project,
             onAddContributor: (target, contributor) => controller.addContributor(target, contributor),
             onRemoveContributor: (target, id) => controller.removeContributor(target, id),
+            onUpdateWeight: (target, id, weight) => controller.updateContributorWeight(target, id, weight),
             onRemove: (param) => _removeParameter(controller, param),
             onEdit: (param) => controller.markChanged(),
           ),
@@ -360,7 +361,6 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
 
   void _showAddParameterDialog(ProjectController controller) {
     final nameController = TextEditingController();
-    double weight = 1.0;
     AggregationType aggregation = AggregationType.avg;
 
     showDialog(
@@ -378,22 +378,6 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                   decoration: const InputDecoration(labelText: 'Name'),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('Weight:'),
-                    Expanded(
-                      child: Slider(
-                        value: weight,
-                        min: 0,
-                        max: 1,
-                        divisions: 20,
-                        label: weight.toStringAsFixed(2),
-                        onChanged: (v) => setState(() => weight = v),
-                      ),
-                    ),
-                    Text(weight.toStringAsFixed(2)),
-                  ],
-                ),
                 DropdownButtonFormField<AggregationType>(
                   initialValue: aggregation,
                   decoration: const InputDecoration(labelText: 'Aggregation'),
@@ -419,7 +403,6 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                   controller.addParameter(
                     Parameter(
                       name: nameController.text.trim(),
-                      weight: weight,
                       aggregation: aggregation,
                     ),
                   );

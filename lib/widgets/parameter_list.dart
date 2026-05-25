@@ -5,7 +5,8 @@ import '../models/project.dart';
 class ParameterList extends StatefulWidget {
   final Project project;
   final void Function(Parameter target, Parameter contributor) onAddContributor;
-  final void Function(Parameter, String contributorId) onRemoveContributor;
+  final void Function(Parameter target, String contributorId) onRemoveContributor;
+  final void Function(Parameter target, String contributorId, double weight) onUpdateWeight;
   final void Function(Parameter) onRemove;
   final void Function(Parameter) onEdit;
 
@@ -14,6 +15,7 @@ class ParameterList extends StatefulWidget {
     required this.project,
     required this.onAddContributor,
     required this.onRemoveContributor,
+    required this.onUpdateWeight,
     required this.onRemove,
     required this.onEdit,
   });
@@ -39,11 +41,6 @@ class _ParameterListState extends State<ParameterList> {
   Widget _buildParameterCard(Parameter param) {
     final isExpanded = _expanded.contains(param.id);
     final isRoot = !widget.project.parameters.any((p) => p.contributorIds.contains(param.id));
-    final contributors = param.contributorIds
-        .map((id) => widget.project.getParameterById(id))
-        .where((p) => p != null)
-        .cast<Parameter>()
-        .toList();
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -62,23 +59,6 @@ class _ParameterListState extends State<ParameterList> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isRoot)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'w=${param.weight.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.indigo.shade800,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
                   onPressed: () => _showEditDialog(param),
@@ -90,7 +70,7 @@ class _ParameterListState extends State<ParameterList> {
               ],
             ),
           ),
-          if (contributors.isNotEmpty)
+          if (param.contributors.isNotEmpty)
             InkWell(
               onTap: () {
                 setState(() {
@@ -111,7 +91,7 @@ class _ParameterListState extends State<ParameterList> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Contributors (${contributors.length})',
+                      'Contributors (${param.contributors.length})',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -122,20 +102,45 @@ class _ParameterListState extends State<ParameterList> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
-                children: [
-                  ...contributors.map((c) => ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.arrow_upward, size: 16),
-                        title: Text(c.name),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.remove_circle, size: 18, color: Colors.red),
-                          onPressed: () => widget.onRemoveContributor(param, c.id),
+                children: param.contributors.map((link) {
+                  final contributor = widget.project.getParameterById(link.id);
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.arrow_upward, size: 16),
+                    title: Text(contributor?.name ?? 'Unknown'),
+                    subtitle: Row(
+                      children: [
+                        const Text('Weight:'),
+                        Expanded(
+                          child: Slider(
+                            value: link.weight,
+                            min: 0,
+                            max: 1,
+                            divisions: 20,
+                            label: link.weight.toStringAsFixed(2),
+                            onChanged: (v) {
+                              widget.onUpdateWeight(param, link.id, v);
+                            },
+                          ),
                         ),
-                      )),
-                ],
+                        SizedBox(
+                          width: 40,
+                          child: Text(
+                            link.weight.toStringAsFixed(2),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove_circle, size: 18, color: Colors.red),
+                      onPressed: () => widget.onRemoveContributor(param, link.id),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
-          if (isExpanded || contributors.isEmpty)
+          if (isExpanded || param.contributors.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextButton.icon(
@@ -154,7 +159,6 @@ class _ParameterListState extends State<ParameterList> {
     final maxValueController = TextEditingController(
       text: param.maxValue?.toString() ?? '',
     );
-    double weight = param.weight;
     AggregationType aggregation = param.aggregation;
 
     showDialog(
@@ -171,35 +175,17 @@ class _ParameterListState extends State<ParameterList> {
                   decoration: const InputDecoration(labelText: 'Name'),
                 ),
                 const SizedBox(height: 12),
-                if (!widget.project.roots.any((r) => r.id == param.id)) ...[
-                  Row(
-                    children: [
-                      const Text('Weight:'),
-                      Expanded(
-                        child: Slider(
-                          value: weight,
-                          min: 0,
-                          max: 1,
-                          divisions: 20,
-                          label: weight.toStringAsFixed(2),
-                          onChanged: (v) => setState(() => weight = v),
-                        ),
-                      ),
-                      Text(weight.toStringAsFixed(2)),
-                    ],
-                  ),
-                  DropdownButtonFormField<AggregationType>(
-                    initialValue: aggregation,
-                    decoration: const InputDecoration(labelText: 'Aggregation'),
-                    items: AggregationType.values.map((t) {
-                      return DropdownMenuItem(
-                        value: t,
-                        child: Text(t.name),
-                      );
-                    }).toList(),
-                    onChanged: (v) => setState(() => aggregation = v!),
-                  ),
-                ],
+                DropdownButtonFormField<AggregationType>(
+                  initialValue: aggregation,
+                  decoration: const InputDecoration(labelText: 'Aggregation'),
+                  items: AggregationType.values.map((t) {
+                    return DropdownMenuItem(
+                      value: t,
+                      child: Text(t.name),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setState(() => aggregation = v!),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: maxValueController,
@@ -220,10 +206,7 @@ class _ParameterListState extends State<ParameterList> {
             FilledButton(
               onPressed: () {
                 param.name = nameController.text.trim();
-                if (!widget.project.roots.any((r) => r.id == param.id)) {
-                  param.weight = weight;
-                  param.aggregation = aggregation;
-                }
+                param.aggregation = aggregation;
                 param.maxValue = maxValueController.text.trim().isEmpty
                     ? null
                     : double.tryParse(maxValueController.text.trim());
@@ -276,7 +259,6 @@ class _ParameterListState extends State<ParameterList> {
                 title: Text(param.name),
                 subtitle: Text(param.isLeaf ? 'Leaf' : 'Computed'),
                 onTap: () {
-                  // Check for cycle
                   final wouldCreateCycle = _wouldCreateCycle(target, param);
                   if (wouldCreateCycle) {
                     Navigator.pop(ctx);
@@ -315,8 +297,6 @@ class _ParameterListState extends State<ParameterList> {
   }
 
   bool _wouldCreateCycle(Parameter target, Parameter contributor) {
-    // If target already contributes (directly or indirectly) to contributor,
-    // adding contributor as a contributor of target creates a cycle
     final visited = <String>{};
     return _contributesTo(target.id, contributor.id, visited);
   }
