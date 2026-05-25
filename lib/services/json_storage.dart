@@ -73,9 +73,9 @@ class JsonStorage {
     final bytes = utf8.encode(jsonStr);
 
     final location = await getSaveLocation(
-      suggestedName: 'template.json',
+      suggestedName: 'template.jfzt',
       acceptedTypeGroups: const [
-        XTypeGroup(label: 'JSON files', extensions: ['json']),
+        XTypeGroup(label: 'Fuzzy Logic Template files', extensions: ['jfzt']),
       ],
     );
     if (location == null) return null;
@@ -87,8 +87,8 @@ class JsonStorage {
 
   static Future<List<dynamic>?> loadTemplate() async {
     const typeGroup = XTypeGroup(
-      label: 'JSON files',
-      extensions: ['json'],
+      label: 'Fuzzy Logic Template files',
+      extensions: ['jfzt', 'json'],
     );
     final file = await openFile(acceptedTypeGroups: [typeGroup]);
     if (file == null) return null;
