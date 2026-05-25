@@ -388,6 +388,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
 
   void _showAddParameterDialog(ProjectController controller) {
     final nameController = TextEditingController();
+    final maxValueController = TextEditingController();
     AggregationType aggregation = AggregationType.avg;
 
     showDialog(
@@ -416,6 +417,15 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                   }).toList(),
                   onChanged: (v) => setState(() => aggregation = v!),
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: maxValueController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Max Value (optional)',
+                    hintText: 'Leave empty for raw 0-1',
+                  ),
+                ),
               ],
             ),
           ),
@@ -431,6 +441,9 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                     Parameter(
                       name: nameController.text.trim(),
                       aggregation: aggregation,
+                      maxValue: maxValueController.text.trim().isEmpty
+                          ? null
+                          : double.tryParse(maxValueController.text.trim()),
                     ),
                   );
                   Navigator.pop(ctx);

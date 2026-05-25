@@ -23,10 +23,11 @@ class ProjectController extends ChangeNotifier {
   }
 
   Future<bool> openProject() async {
-    final proj = await JsonStorage.openProject();
-    if (proj == null) return false;
+    final result = await JsonStorage.openProject();
+    if (result == null) return false;
+    final (proj, path) = result;
     _project = proj;
-    _filePath = null;
+    _filePath = path;
     _hasUnsavedChanges = false;
     notifyListeners();
     return true;
@@ -41,7 +42,9 @@ class ProjectController extends ChangeNotifier {
 
   Future<String?> saveProject() async {
     if (_project == null) return null;
-    final path = await JsonStorage.saveProject(_project!, path: _filePath);
+    // If opened from .json, first save prompts for .jsonfz location
+    final usePath = (_filePath != null && _filePath!.endsWith('.jsonfz')) ? _filePath : null;
+    final path = await JsonStorage.saveProject(_project!, path: usePath);
     if (path != null) {
       _filePath = path;
       _hasUnsavedChanges = false;

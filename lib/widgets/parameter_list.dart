@@ -118,25 +118,29 @@ class _ParameterListState extends State<ParameterList> {
                             Row(
                               children: [
                                 const Text('w=', style: TextStyle(fontSize: 12)),
-                                Expanded(
-                                  child: Slider(
-                                    value: link.weight,
-                                    min: 0,
-                                    max: 2,
-                                    divisions: 40,
-                                    label: link.weight.toStringAsFixed(2),
-                                    onChanged: (v) {
-                                      widget.onUpdateWeight(param, link.id, v);
+                                SizedBox(
+                                  width: 80,
+                                  child: TextField(
+                                    controller: TextEditingController(text: link.weight.toStringAsFixed(2)),
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    style: const TextStyle(fontSize: 14),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    onSubmitted: (v) {
+                                      final value = double.tryParse(v.trim()) ?? 0;
+                                      if (value >= 0) {
+                                        widget.onUpdateWeight(param, link.id, value);
+                                      }
                                     },
                                   ),
                                 ),
-                                SizedBox(
-                                  width: 100,
-                                  child: Text(
-                                    '${link.weight.toStringAsFixed(2)} (n=${normalized.toStringAsFixed(2)})',
-                                    style: const TextStyle(fontSize: 11),
-                                    textAlign: TextAlign.end,
-                                  ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '(n=${normalized.toStringAsFixed(2)})',
+                                  style: const TextStyle(fontSize: 11),
                                 ),
                               ],
                             ),
