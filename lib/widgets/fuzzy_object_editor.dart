@@ -55,7 +55,10 @@ class _FuzzyObjectEditorState extends State<FuzzyObjectEditor> {
   Widget _buildParameterNode(Parameter param, int depth) {
     final isExpanded = _expanded[param.id] ?? true;
     if (param.isLeaf) {
-      final value = widget.fuzzyObject.values[param.id] ?? 0.0;
+      final hasMax = param.maxValue != null && param.maxValue! > 0;
+      final rawValue = widget.fuzzyObject.values[param.id] ?? 0.0;
+      final displayValue = hasMax ? rawValue * param.maxValue! : rawValue;
+      final max = hasMax ? param.maxValue! : 1.0;
       return Padding(
         padding: EdgeInsets.only(left: depth * 16.0 + 12, top: 4, bottom: 4),
         child: Row(
@@ -70,11 +73,11 @@ class _FuzzyObjectEditorState extends State<FuzzyObjectEditor> {
             Expanded(
               flex: 3,
               child: Slider(
-                value: value,
+                value: rawValue.clamp(0.0, 1.0),
                 min: 0,
                 max: 1,
                 divisions: 100,
-                label: value.toStringAsFixed(2),
+                label: hasMax ? displayValue.toStringAsFixed(2) : rawValue.toStringAsFixed(2),
                 onChanged: (v) {
                   setState(() {
                     widget.fuzzyObject.values[param.id] = v;
@@ -84,10 +87,15 @@ class _FuzzyObjectEditorState extends State<FuzzyObjectEditor> {
               ),
             ),
             SizedBox(
-              width: 50,
+              width: hasMax ? 70 : 50,
               child: Text(
-                value.toStringAsFixed(2),
+                hasMax ? '${displayValue.toStringAsFixed(2)} / ${max.toStringAsFixed(0)}' : rawValue.toStringAsFixed(2),
                 textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: hasMax ? 11 : 14,
+                  color: hasMax ? Colors.blue.shade700 : null,
+                  fontWeight: hasMax ? FontWeight.bold : null,
+                ),
               ),
             ),
             const SizedBox(width: 12),

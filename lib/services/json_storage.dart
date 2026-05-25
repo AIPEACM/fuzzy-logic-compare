@@ -7,6 +7,19 @@ import '../models/project.dart';
 class JsonStorage {
   static const String _extension = 'json';
 
+  static Future<Project?> openProjectAtPath(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      final jsonStr = utf8.decode(bytes);
+      final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+      return Project.fromJson(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
   static Future<Project?> openProject() async {
     const typeGroup = XTypeGroup(
       label: 'JSON files',

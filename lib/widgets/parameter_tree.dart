@@ -123,6 +123,7 @@ class _ParameterTreeState extends State<ParameterTree> {
 
   void _showAddChildDialog(Parameter parent) {
     final nameController = TextEditingController();
+    final maxValueController = TextEditingController();
     double weight = 1.0;
     AggregationType aggregation = AggregationType.avg;
 
@@ -168,6 +169,15 @@ class _ParameterTreeState extends State<ParameterTree> {
                   }).toList(),
                   onChanged: (v) => setState(() => aggregation = v!),
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: maxValueController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Max Value (optional, for normalization)',
+                    hintText: 'Leave empty for raw 0-1',
+                  ),
+                ),
               ],
             ),
           ),
@@ -184,6 +194,9 @@ class _ParameterTreeState extends State<ParameterTree> {
                     name: nameController.text.trim(),
                     weight: weight,
                     aggregation: aggregation,
+                    maxValue: maxValueController.text.trim().isEmpty
+                        ? null
+                        : double.tryParse(maxValueController.text.trim()),
                   );
                   widget.onAddChild(parent, child);
                   Navigator.pop(ctx);
@@ -199,6 +212,9 @@ class _ParameterTreeState extends State<ParameterTree> {
 
   void _showEditDialog(Parameter param) {
     final nameController = TextEditingController(text: param.name);
+    final maxValueController = TextEditingController(
+      text: param.maxValue?.toString() ?? '',
+    );
     double weight = param.weight;
     AggregationType aggregation = param.aggregation;
 
@@ -243,6 +259,15 @@ class _ParameterTreeState extends State<ParameterTree> {
                   }).toList(),
                   onChanged: (v) => setState(() => aggregation = v!),
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: maxValueController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Max Value (optional)',
+                    hintText: param.maxValue == null ? 'Leave empty for raw 0-1' : 'Current: ${param.maxValue}',
+                  ),
+                ),
               ],
             ),
           ),
@@ -256,6 +281,9 @@ class _ParameterTreeState extends State<ParameterTree> {
                 param.name = nameController.text.trim();
                 param.weight = weight;
                 param.aggregation = aggregation;
+                param.maxValue = maxValueController.text.trim().isEmpty
+                    ? null
+                    : double.tryParse(maxValueController.text.trim());
                 setState(() {});
                 widget.onEdit(param);
                 Navigator.pop(ctx);

@@ -7,6 +7,7 @@ class Parameter {
   String name;
   double weight;
   AggregationType aggregation;
+  double? maxValue;
   List<Parameter> children;
 
   Parameter({
@@ -14,6 +15,7 @@ class Parameter {
     required this.name,
     this.weight = 1.0,
     this.aggregation = AggregationType.avg,
+    this.maxValue,
     List<Parameter>? children,
   })  : id = id ?? const Uuid().v4(),
         children = children ?? [];
@@ -25,6 +27,7 @@ class Parameter {
         'name': name,
         'weight': weight,
         'aggregation': aggregation.name,
+        'maxValue': maxValue,
         'children': children.map((c) => c.toJson()).toList(),
       };
 
@@ -33,6 +36,7 @@ class Parameter {
         name: json['name'] as String,
         weight: (json['weight'] as num).toDouble(),
         aggregation: AggregationType.values.byName(json['aggregation'] as String),
+        maxValue: (json['maxValue'] as num?)?.toDouble(),
         children: (json['children'] as List<dynamic>)
             .map((c) => Parameter.fromJson(c as Map<String, dynamic>))
             .toList(),
@@ -44,6 +48,7 @@ class Parameter {
       name: name,
       weight: weight,
       aggregation: aggregation,
+      maxValue: maxValue,
       children: children.map((c) => c.copy()).toList(),
     );
   }
