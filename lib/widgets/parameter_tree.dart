@@ -7,6 +7,7 @@ class ParameterTree extends StatefulWidget {
   final ValueChanged<Parameter> onAddChild;
   final ValueChanged<Parameter> onRemove;
   final void Function(Parameter param, double weight) onEdit;
+  final VoidCallback? onChanged;
 
   const ParameterTree({
     super.key,
@@ -14,6 +15,7 @@ class ParameterTree extends StatefulWidget {
     required this.onAddChild,
     required this.onRemove,
     required this.onEdit,
+    this.onChanged,
   });
 
   @override
@@ -48,77 +50,80 @@ class _ParameterTreeState extends State<ParameterTree> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
-          onTap: () {
-            setState(() {
-              if (isExpanded) {
-                _expanded.remove(param.id);
-              } else {
-                _expanded.add(param.id);
-              }
-            });
-          },
-          child: Container(
-            padding: EdgeInsets.only(left: depth * 16.0 + 8, top: 4, bottom: 4),
-            child: Row(
-              children: [
-                if (hasChildren)
-                  Icon(
-                    isExpanded ? Icons.expand_more : Icons.chevron_right,
-                    size: 20,
-                  )
-                else
-                  const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        param.name,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (!isRoot) ...[
-                        Builder(
-                          builder: (context) {
-                            final parent = widget.project.getParentOf(param.id);
-                            final totalWeight = parent?.contributors.fold(0.0, (s, c) => s + c.weight) ?? 1.0;
-                            final normalized = totalWeight > 0 ? (weight ?? 1.0) / totalWeight : 0.0;
-                            return Text(
-                              'w=${(weight ?? 1.0).toStringAsFixed(2)} (n=${normalized.toStringAsFixed(2)}) • ${param.aggregation.name}${param.maxValue != null ? ' • max=${param.maxValue}' : ''}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            );
-                          },
+        GestureDetector(
+          onSecondaryTapUp: (details) => _showContextMenu(param, details.globalPosition),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expanded.remove(param.id);
+                } else {
+                  _expanded.add(param.id);
+                }
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.only(left: depth * 16.0 + 8, top: 4, bottom: 4),
+              child: Row(
+                children: [
+                  if (hasChildren)
+                    Icon(
+                      isExpanded ? Icons.expand_more : Icons.chevron_right,
+                      size: 20,
+                    )
+                  else
+                    const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          param.name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        if (!isRoot) ...[
+                          Builder(
+                            builder: (context) {
+                              final parent = widget.project.getParentOf(param.id);
+                              final totalWeight = parent?.contributors.fold(0.0, (s, c) => s + c.weight) ?? 1.0;
+                              final normalized = totalWeight > 0 ? (weight ?? 1.0) / totalWeight : 0.0;
+                              return Text(
+                                'w=${(weight ?? 1.0).toStringAsFixed(2)} (n=${normalized.toStringAsFixed(2)}) • ${param.aggregation.name}${param.maxValue != null ? ' • max=${param.maxValue}${param.inverted ? " (inv)" : ""}' : ""}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              );
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  iconSize: 18,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.add, color: Colors.green),
-                  onPressed: () => _showAddChildDialog(param),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  iconSize: 18,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () => _showEditDialog(param),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  iconSize: 18,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => widget.onRemove(param),
-                ),
-                const SizedBox(width: 8),
-              ],
+                  IconButton(
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.add, color: Colors.green),
+                    onPressed: () => _showAddChildDialog(param),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () => _showEditDialog(param),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => widget.onRemove(param),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
             ),
           ),
         ),
@@ -126,6 +131,98 @@ class _ParameterTreeState extends State<ParameterTree> {
           ...children.map((child) => _buildNode(child, depth + 1)),
       ],
     );
+  }
+
+  void _showContextMenu(Parameter param, Offset position) {
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: [
+        PopupMenuItem(
+          onTap: () => _evenlyArrangeChildren(param),
+          child: Row(
+            children: [
+              const Icon(Icons.format_align_justify, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Evenly arrange children')),
+              Tooltip(
+                message: 'Set aggregation to avg and make all direct children contribute equally to this parameter. Does not affect grandchildren.',
+                child: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          onTap: () => _evenlyArrangeLeaves(param),
+          child: Row(
+            children: [
+              const Icon(Icons.account_tree_outlined, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Evenly arrange all leaves')),
+              Tooltip(
+                message: 'Set aggregation to avg for this parameter and all descendants, then adjust weights so every leaf contributes equally.',
+                child: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _evenlyArrangeChildren(Parameter param) {
+    param.aggregation = AggregationType.avg;
+    final n = param.contributors.length;
+    if (n > 0) {
+      for (final link in param.contributors) {
+        link.weight = 1.0;
+      }
+    }
+    widget.onChanged?.call();
+  }
+
+  void _evenlyArrangeLeaves(Parameter param) {
+    // Count leaves in each node's subtree (bottom-up via DFS post-order)
+    final leafCount = <String, int>{};
+
+    int countLeaves(String id) {
+      if (leafCount.containsKey(id)) return leafCount[id]!;
+      final p = widget.project.getParameterById(id);
+      if (p == null || p.isLeaf) {
+        leafCount[id] = 1;
+        return 1;
+      }
+      int sum = 0;
+      for (final link in p.contributors) {
+        sum += countLeaves(link.id);
+      }
+      leafCount[id] = sum;
+      return sum;
+    }
+
+    // Compute leaf counts for all nodes in subtree
+    countLeaves(param.id);
+
+    // Set aggregation to avg for all nodes in subtree, and set weights
+    void apply(String id) {
+      final p = widget.project.getParameterById(id);
+      if (p == null) return;
+      p.aggregation = AggregationType.avg;
+      final parentLeaves = leafCount[id]!;
+      for (final link in p.contributors) {
+        final childLeaves = leafCount[link.id]!;
+        link.weight = childLeaves / parentLeaves;
+        apply(link.id);
+      }
+    }
+
+    apply(param.id);
+    widget.onChanged?.call();
   }
 
   void _showAddChildDialog(Parameter parent) {
@@ -174,9 +271,7 @@ class _ParameterTreeState extends State<ParameterTree> {
                   children: [
                     Checkbox(
                       value: inverted,
-                      onChanged: maxValueController.text.trim().isEmpty
-                          ? null
-                          : (v) => setState(() => inverted = v!),
+                      onChanged: (v) => setState(() => inverted = v!),
                     ),
                     const Text('Inverted'),
                     const SizedBox(width: 4),
@@ -279,6 +374,21 @@ class _ParameterTreeState extends State<ParameterTree> {
                     labelText: 'Max Value (optional)',
                     hintText: 'Leave empty for raw 0-1',
                   ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: inverted,
+                      onChanged: (v) => setState(() => inverted = v!),
+                    ),
+                    const Text('Inverted'),
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'When enabled, higher raw values produce lower scores. Useful for "bad when high" parameters like cost.',
+                      child: const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ],
             ),

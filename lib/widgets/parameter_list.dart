@@ -9,6 +9,7 @@ class ParameterList extends StatefulWidget {
   final void Function(Parameter target, String contributorId, double weight) onUpdateWeight;
   final void Function(Parameter) onRemove;
   final void Function(Parameter) onEdit;
+  final VoidCallback? onChanged;
 
   const ParameterList({
     super.key,
@@ -18,6 +19,7 @@ class ParameterList extends StatefulWidget {
     required this.onUpdateWeight,
     required this.onRemove,
     required this.onEdit,
+    this.onChanged,
   });
 
   @override
@@ -46,28 +48,31 @@ class _ParameterListState extends State<ParameterList> {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Column(
         children: [
-          ListTile(
-            dense: true,
-            title: Text(
-              param.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              '${isRoot ? 'Root • ' : ''}${param.aggregation.name}'
-              '${param.maxValue != null ? ' • max=${param.maxValue}' : ''}',
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 18),
-                  onPressed: () => _showEditDialog(param),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                  onPressed: () => widget.onRemove(param),
-                ),
-              ],
+          GestureDetector(
+            onSecondaryTapUp: (details) => _showContextMenu(param, details.globalPosition),
+            child: ListTile(
+              dense: true,
+              title: Text(
+                param.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                '${isRoot ? 'Root • ' : ''}${param.aggregation.name}'
+                '${param.maxValue != null ? ' • max=${param.maxValue}' : ''}',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    onPressed: () => _showEditDialog(param),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                    onPressed: () => widget.onRemove(param),
+                  ),
+                ],
+              ),
             ),
           ),
           if (param.contributors.isNotEmpty)
@@ -217,9 +222,7 @@ class _ParameterListState extends State<ParameterList> {
                   children: [
                     Checkbox(
                       value: inverted,
-                      onChanged: maxValueController.text.trim().isEmpty
-                          ? null
-                          : (v) => setState(() => inverted = v!),
+                      onChanged: (v) => setState(() => inverted = v!),
                     ),
                     const Text('Inverted'),
                     const SizedBox(width: 4),
@@ -329,6 +332,95 @@ class _ParameterListState extends State<ParameterList> {
         ],
       ),
     );
+  }
+
+  void _showContextMenu(Parameter param, Offset position) {
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: [
+        PopupMenuItem(
+          onTap: () => _evenlyArrangeChildren(param),
+          child: Row(
+            children: [
+              const Icon(Icons.format_align_justify, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Evenly arrange children')),
+              Tooltip(
+                message: 'Set aggregation to avg and make all direct children contribute equally to this parameter. Does not affect grandchildren.',
+                child: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          onTap: () => _evenlyArrangeLeaves(param),
+          child: Row(
+            children: [
+              const Icon(Icons.account_tree_outlined, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Evenly arrange all leaves')),
+              Tooltip(
+                message: 'Set aggregation to avg for this parameter and all descendants, then adjust weights so every leaf contributes equally.',
+                child: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _evenlyArrangeChildren(Parameter param) {
+    param.aggregation = AggregationType.avg;
+    final n = param.contributors.length;
+    if (n > 0) {
+      for (final link in param.contributors) {
+        link.weight = 1.0;
+      }
+    }
+    widget.onChanged?.call();
+  }
+
+  void _evenlyArrangeLeaves(Parameter param) {
+    final leafCount = <String, int>{};
+
+    int countLeaves(String id) {
+      if (leafCount.containsKey(id)) return leafCount[id]!;
+      final p = widget.project.getParameterById(id);
+      if (p == null || p.isLeaf) {
+        leafCount[id] = 1;
+        return 1;
+      }
+      int sum = 0;
+      for (final link in p.contributors) {
+        sum += countLeaves(link.id);
+      }
+      leafCount[id] = sum;
+      return sum;
+    }
+
+    countLeaves(param.id);
+
+    void apply(String id) {
+      final p = widget.project.getParameterById(id);
+      if (p == null) return;
+      p.aggregation = AggregationType.avg;
+      final parentLeaves = leafCount[id]!;
+      for (final link in p.contributors) {
+        final childLeaves = leafCount[link.id]!;
+        link.weight = childLeaves / parentLeaves;
+        apply(link.id);
+      }
+    }
+
+    apply(param.id);
+    widget.onChanged?.call();
   }
 
   bool _wouldCreateCycle(Parameter target, Parameter contributor) {

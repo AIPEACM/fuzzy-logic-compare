@@ -324,6 +324,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                     project.setContributorWeight(param.id, weight);
                     controller.markChanged();
                   },
+                  onChanged: () => controller.markChanged(),
                 )
               : ParameterList(
                   project: project,
@@ -332,6 +333,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                   onUpdateWeight: (target, id, weight) => controller.updateContributorWeight(target, id, weight),
                   onRemove: (param) => _removeParameter(controller, param),
                   onEdit: (param) => controller.markChanged(),
+                  onChanged: () => controller.markChanged(),
                 ),
         ),
       ],
