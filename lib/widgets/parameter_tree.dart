@@ -225,21 +225,19 @@ class _ParameterTreeState extends State<ParameterTree> {
                 ),
                 const SizedBox(height: 12),
                 if (!isRoot) ...[
-                  Row(
-                    children: [
-                      const Text('Weight:'),
-                      Expanded(
-                        child: Slider(
-                          value: editedWeight,
-                          min: 0,
-                          max: 2,
-                          divisions: 40,
-                          label: editedWeight.toStringAsFixed(2),
-                          onChanged: (v) => setState(() => editedWeight = v),
-                        ),
-                      ),
-                      Text(editedWeight.toStringAsFixed(2)),
-                    ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: TextEditingController(text: weight.toStringAsFixed(2)),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Weight',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (v) {
+                      final value = double.tryParse(v.trim()) ?? 0;
+                      if (value >= 0) editedWeight = value;
+                    },
                   ),
                 ],
                 DropdownButtonFormField<AggregationType>(
