@@ -436,6 +436,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
     final nameController = TextEditingController();
     final maxValueController = TextEditingController();
     AggregationType aggregation = AggregationType.avg;
+    bool inverted = false;
 
     showDialog(
       context: context,
@@ -472,6 +473,23 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                     hintText: 'Leave empty for raw 0-1',
                   ),
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: inverted,
+                      onChanged: maxValueController.text.trim().isEmpty
+                          ? null
+                          : (v) => setState(() => inverted = v!),
+                    ),
+                    const Text('Inverted'),
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'When enabled, higher raw values produce lower scores. Useful for "bad when high" parameters like cost.',
+                      child: const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -490,6 +508,7 @@ class _MainEditorScreenState extends State<MainEditorScreen> with WindowListener
                       maxValue: maxValueController.text.trim().isEmpty
                           ? null
                           : double.tryParse(maxValueController.text.trim()),
+                      inverted: inverted,
                     ),
                   );
                   Navigator.pop(ctx);

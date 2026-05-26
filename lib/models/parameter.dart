@@ -23,6 +23,7 @@ class Parameter {
   String name;
   AggregationType aggregation;
   double? maxValue;
+  bool inverted;
   List<ContributorLink> contributors;
 
   Parameter({
@@ -30,6 +31,7 @@ class Parameter {
     required this.name,
     this.aggregation = AggregationType.avg,
     this.maxValue,
+    this.inverted = false,
     List<ContributorLink>? contributors,
   })  : id = id ?? const Uuid().v4(),
         contributors = contributors ?? [];
@@ -43,6 +45,7 @@ class Parameter {
         'name': name,
         'aggregation': aggregation.name,
         'maxValue': maxValue,
+        'inverted': inverted,
         'contributors': contributors.map((c) => c.toJson()).toList(),
       };
 
@@ -69,6 +72,7 @@ class Parameter {
       name: json['name'] as String,
       aggregation: AggregationType.values.byName(json['aggregation'] as String),
       maxValue: (json['maxValue'] as num?)?.toDouble(),
+      inverted: json['inverted'] as bool? ?? false,
       contributors: contributors,
     );
   }
@@ -78,6 +82,7 @@ class Parameter {
         name: name,
         aggregation: aggregation,
         maxValue: maxValue,
+        inverted: inverted,
         contributors: contributors.map((c) => c.copy()).toList(),
       );
 }

@@ -176,6 +176,7 @@ class _ParameterListState extends State<ParameterList> {
       text: param.maxValue?.toString() ?? '',
     );
     AggregationType aggregation = param.aggregation;
+    bool inverted = param.inverted;
 
     showDialog(
       context: context,
@@ -211,6 +212,23 @@ class _ParameterListState extends State<ParameterList> {
                     hintText: 'Leave empty for raw 0-1',
                   ),
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: inverted,
+                      onChanged: maxValueController.text.trim().isEmpty
+                          ? null
+                          : (v) => setState(() => inverted = v!),
+                    ),
+                    const Text('Inverted'),
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'When enabled, higher raw values produce lower scores. Useful for "bad when high" parameters like cost.',
+                      child: const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -226,6 +244,7 @@ class _ParameterListState extends State<ParameterList> {
                 param.maxValue = maxValueController.text.trim().isEmpty
                     ? null
                     : double.tryParse(maxValueController.text.trim());
+                param.inverted = inverted;
                 widget.onEdit(param);
                 Navigator.pop(ctx);
               },

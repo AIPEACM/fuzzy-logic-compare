@@ -266,7 +266,13 @@ class ProjectController extends ChangeNotifier {
     }
 
     if (param.isLeaf) {
-      final values = objects.map((o) => o.values[param.id] ?? 0.0).toList();
+      final values = objects.map((o) {
+        final raw = o.values[param.id] ?? 0.0;
+        if (param.maxValue != null && param.maxValue! > 0 && param.inverted) {
+          return 1.0 - raw;
+        }
+        return raw;
+      }).toList();
       final score = values.reduce((a, b) => a + b) / values.length;
       result[param.id] = score;
       return score;

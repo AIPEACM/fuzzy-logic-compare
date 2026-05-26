@@ -132,6 +132,7 @@ class _ParameterTreeState extends State<ParameterTree> {
     final nameController = TextEditingController();
     final maxValueController = TextEditingController();
     AggregationType aggregation = AggregationType.avg;
+    bool inverted = false;
 
     showDialog(
       context: context,
@@ -168,6 +169,23 @@ class _ParameterTreeState extends State<ParameterTree> {
                     hintText: 'Leave empty for raw 0-1',
                   ),
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: inverted,
+                      onChanged: maxValueController.text.trim().isEmpty
+                          ? null
+                          : (v) => setState(() => inverted = v!),
+                    ),
+                    const Text('Inverted'),
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'When enabled, higher raw values produce lower scores. Useful for "bad when high" parameters like cost.',
+                      child: const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -185,6 +203,7 @@ class _ParameterTreeState extends State<ParameterTree> {
                     maxValue: maxValueController.text.trim().isEmpty
                         ? null
                         : double.tryParse(maxValueController.text.trim()),
+                    inverted: inverted,
                   );
                   widget.onAddChild(child);
                   parent.contributors = [...parent.contributors, ContributorLink(id: child.id)];
@@ -209,6 +228,7 @@ class _ParameterTreeState extends State<ParameterTree> {
     final weight = isRoot ? 1.0 : widget.project.getContributorWeight(param.id);
     double editedWeight = weight;
     AggregationType aggregation = param.aggregation;
+    bool inverted = param.inverted;
 
     showDialog(
       context: context,
@@ -275,6 +295,7 @@ class _ParameterTreeState extends State<ParameterTree> {
                 param.maxValue = maxValueController.text.trim().isEmpty
                     ? null
                     : double.tryParse(maxValueController.text.trim());
+                param.inverted = inverted;
                 setState(() {});
                 widget.onEdit(param, editedWeight);
                 Navigator.pop(ctx);
