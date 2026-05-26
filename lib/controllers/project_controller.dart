@@ -246,65 +246,68 @@ class ProjectController extends ChangeNotifier {
     markChanged();
   }
 
-  // Comparison logic
-  Map<String, double> compareObjects(List<FuzzyObject> objects) {
+  // Comparison logic — returns per-object scores per parameter
+  Map<String, List<double>> compareObjects(List<FuzzyObject> objects) {
     if (_project == null || objects.isEmpty) return {};
-    final result = <String, double>{};
+    final result = <String, List<double>>{};
     for (final param in _project!.parameters) {
       _evaluateParameter(param, objects, result, <String>{});
     }
     return result;
   }
 
-  double _evaluateParameter(Parameter param, List<FuzzyObject> objects, Map<String, double> result, Set<String> visiting) {
+  List<double> _evaluateParameter(Parameter param, List<FuzzyObject> objects, Map<String, List<double>> result, Set<String> visiting) {
     if (visiting.contains(param.id)) {
-      result[param.id] = 0.0;
-      return 0.0;
+      final zeros = List<double>.filled(objects.length, 0.0);
+      result[param.id] = zeros;
+      return zeros;
     }
     if (result.containsKey(param.id)) {
       return result[param.id]!;
     }
 
     if (param.isLeaf) {
-      final values = objects.map((o) {
-        final raw = o.values[param.id] ?? 0.0;
-        if (param.maxValue != null && param.maxValue! > 0 && param.inverted) {
-          return 1.0 - raw;
-        }
-        return raw;
+      final scores = objects.map((o) {
+        var v = o.values[param.id] ?? 0.0;
+        if (param.maxValue != null && param.maxValue! > 0) v /= param.maxValue!;
+        if (param.inverted) v = 1.0 - v;
+        return v.clamp(0.0, 1.0);
       }).toList();
-      final score = values.reduce((a, b) => a + b) / values.length;
-      result[param.id] = score;
-      return score;
+      result[param.id] = scores;
+      return scores;
     }
 
     visiting.add(param.id);
-    final contributorValues = <double>[];
+    final contributorScores = <List<double>>[];
     final totalWeight = param.contributors.fold(0.0, (sum, c) => sum + c.weight);
     for (final link in param.contributors) {
       final contributor = _project!.getParameterById(link.id);
       if (contributor == null) continue;
-      final value = _evaluateParameter(contributor, objects, result, visiting);
+      final childScores = _evaluateParameter(contributor, objects, result, visiting);
       final normalizedWeight = totalWeight > 0 ? link.weight / totalWeight : 0;
-      contributorValues.add(value * normalizedWeight);
+      contributorScores.add(childScores.map((v) => v * normalizedWeight).toList());
     }
     visiting.remove(param.id);
 
-    final score = _aggregate(contributorValues, param.aggregation);
-    result[param.id] = score;
-    return score;
+    final scores = _aggregatePerObject(contributorScores, param.aggregation);
+    result[param.id] = scores;
+    return scores;
   }
 
-  double _aggregate(List<double> values, AggregationType type) {
-    if (values.isEmpty) return 0.0;
+  List<double> _aggregatePerObject(List<List<double>> values, AggregationType type) {
+    if (values.isEmpty) return [];
+    final n = values.first.length;
     switch (type) {
       case AggregationType.min:
-        return values.reduce((a, b) => a < b ? a : b);
+        return List.generate(n, (i) => values.map((v) => v[i]).reduce((a, b) => a < b ? a : b));
       case AggregationType.max:
-        return values.reduce((a, b) => a > b ? a : b);
+        return List.generate(n, (i) => values.map((v) => v[i]).reduce((a, b) => a > b ? a : b));
       case AggregationType.avg:
       case AggregationType.weighted:
-        return values.reduce((a, b) => a + b) / values.length;
+        return List.generate(n, (i) {
+          final sum = values.fold(0.0, (s, v) => s + v[i]);
+          return sum / values.length;
+        });
     }
   }
 }

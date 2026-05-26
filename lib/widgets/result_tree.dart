@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import '../models/fuzzy_object.dart';
 import '../models/parameter.dart';
 import '../models/project.dart';
 
 class ResultTree extends StatefulWidget {
   final Project project;
-  final Map<String, double> results;
+  final List<FuzzyObject> objects;
+  final Map<String, List<double>> results;
 
   const ResultTree({
     super.key,
     required this.project,
+    required this.objects,
     required this.results,
   });
 
@@ -38,7 +41,7 @@ class _ResultTreeState extends State<ResultTree> {
         .cast<Parameter>()
         .toList();
     final hasContributors = contributors.isNotEmpty;
-    final score = widget.results[param.id] ?? 0.0;
+    final scores = widget.results[param.id] ?? List<double>.filled(widget.objects.length, 0.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,20 +79,25 @@ class _ResultTreeState extends State<ResultTree> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _scoreColor(score),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  score.toStringAsFixed(3),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
+              Wrap(
+                spacing: 4,
+                children: scores.map((score) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _scoreColor(score),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      score.toStringAsFixed(3),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
               const SizedBox(width: 12),
             ],
