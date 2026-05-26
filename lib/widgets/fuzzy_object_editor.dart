@@ -104,6 +104,7 @@ class _FuzzyObjectEditorState extends State<FuzzyObjectEditor> {
               min: 0,
               max: 1,
               divisions: 100,
+              activeColor: param.inverted ? Colors.red : null,
               label: hasMax ? displayValue.toStringAsFixed(2) : rawValue.toStringAsFixed(2),
               onChanged: (v) {
                 setState(() {
