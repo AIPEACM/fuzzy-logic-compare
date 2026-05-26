@@ -20,6 +20,28 @@ class FuzzyObjectEditor extends StatefulWidget {
 }
 
 class _FuzzyObjectEditorState extends State<FuzzyObjectEditor> {
+  late final TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.fuzzyObject.name);
+  }
+
+  @override
+  void didUpdateWidget(covariant FuzzyObjectEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fuzzyObject.id != widget.fuzzyObject.id) {
+      _nameController.text = widget.fuzzyObject.name;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final leaves = widget.project.leaves;
@@ -29,7 +51,7 @@ class _FuzzyObjectEditorState extends State<FuzzyObjectEditor> {
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
-            controller: TextEditingController(text: widget.fuzzyObject.name),
+            controller: _nameController,
             decoration: const InputDecoration(
               labelText: 'Object Name',
               border: OutlineInputBorder(),
