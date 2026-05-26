@@ -269,7 +269,7 @@ class ProjectController extends ChangeNotifier {
     if (param.isLeaf) {
       final scores = objects.map((o) {
         var v = o.values[param.id] ?? 0.0;
-        if (param.maxValue != null && param.maxValue! > 0) v /= param.maxValue!;
+        // Values are stored 0-1 from the slider; maxValue is display-only.
         if (param.inverted) v = 1.0 - v;
         return v.clamp(0.0, 1.0);
       }).toList();
@@ -278,36 +278,41 @@ class ProjectController extends ChangeNotifier {
     }
 
     visiting.add(param.id);
-    final contributorScores = <List<double>>[];
-    final totalWeight = param.contributors.fold(0.0, (sum, c) => sum + c.weight);
+    final childScoresList = <List<double>>[];
+    final rawWeights = <double>[];
     for (final link in param.contributors) {
       final contributor = _project!.getParameterById(link.id);
       if (contributor == null) continue;
       final childScores = _evaluateParameter(contributor, objects, result, visiting);
-      final normalizedWeight = totalWeight > 0 ? link.weight / totalWeight : 0;
-      contributorScores.add(childScores.map((v) => v * normalizedWeight).toList());
+      childScoresList.add(childScores);
+      rawWeights.add(link.weight);
     }
     visiting.remove(param.id);
 
-    final scores = _aggregatePerObject(contributorScores, param.aggregation);
+    final totalWeight = rawWeights.fold(0.0, (s, w) => s + w);
+    final n = objects.length;
+    final childCount = childScoresList.length;
+    final scores = List<double>.filled(n, 0.0);
+
+    for (var i = 0; i < n; i++) {
+      switch (param.aggregation) {
+        case AggregationType.min:
+          scores[i] = childScoresList.map((s) => s[i]).reduce((a, b) => a < b ? a : b);
+        case AggregationType.max:
+          scores[i] = childScoresList.map((s) => s[i]).reduce((a, b) => a > b ? a : b);
+        case AggregationType.avg:
+          final sum = childScoresList.fold(0.0, (s, list) => s + list[i]);
+          scores[i] = childCount > 0 ? sum / childCount : 0.0;
+        case AggregationType.weighted:
+          var sum = 0.0;
+          for (var j = 0; j < childCount; j++) {
+            sum += childScoresList[j][i] * rawWeights[j];
+          }
+          scores[i] = totalWeight > 0 ? sum / totalWeight : 0.0;
+      }
+    }
+
     result[param.id] = scores;
     return scores;
-  }
-
-  List<double> _aggregatePerObject(List<List<double>> values, AggregationType type) {
-    if (values.isEmpty) return [];
-    final n = values.first.length;
-    switch (type) {
-      case AggregationType.min:
-        return List.generate(n, (i) => values.map((v) => v[i]).reduce((a, b) => a < b ? a : b));
-      case AggregationType.max:
-        return List.generate(n, (i) => values.map((v) => v[i]).reduce((a, b) => a > b ? a : b));
-      case AggregationType.avg:
-      case AggregationType.weighted:
-        return List.generate(n, (i) {
-          final sum = values.fold(0.0, (s, v) => s + v[i]);
-          return sum / values.length;
-        });
-    }
   }
 }
