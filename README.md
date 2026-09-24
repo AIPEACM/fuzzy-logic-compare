@@ -143,4 +143,4 @@ lib/
 
 ## License
 
-This project is licensed under the GPLv3 License. See [LICENSE](LICENSE) for details.
+This project is licensed under the BSD-3 License. See [LICENSE](LICENSE) for details.
